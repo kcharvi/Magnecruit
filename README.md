@@ -1,0 +1,1 @@
+# Magnecruit - Smart Recruiting Workspace

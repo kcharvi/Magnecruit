@@ -1,0 +1,1 @@
+# Manages conversation history and user preferences ("Brain")
