@@ -20,17 +20,13 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     socketio.init_app(app, async_mode='eventlet', cors_allowed_origins="*")
     
-    # Initialize CORS with credential support for regular HTTP routes
-    # Read allowed origins from config (which reads from env var)
     allowed_origins_str = app.config.get('ALLOWED_ORIGINS', 'http://localhost:5173')
-    # Split comma-separated list into a list of origins
     allowed_origins_list = [origin.strip() for origin in allowed_origins_str.split(',')]
     
     print(f"Configuring CORS for origins: {allowed_origins_list}")
     cors.init_app(app, resources={r"/api/*": {"origins": allowed_origins_list}}, supports_credentials=True)
     
-    from . import websockets
-    from .routes import chat_routes, sequence_routes
+    from .routes import chat_routes
     from .routes.auth_routes import auth_bp
 
     app.register_blueprint(chat_routes.chat_bp, url_prefix='/api/chat')

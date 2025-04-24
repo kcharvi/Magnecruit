@@ -1,7 +1,7 @@
 // magnecruit_frontend\src\components\ChatBar.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { SendHorizontal } from 'lucide-react';
 import { socket } from '../socket';
 import ReactMarkdown from 'react-markdown';
 
@@ -123,7 +123,7 @@ const ChatBar: React.FC<ChatBarProps> = ({conversationId }) => {
   return (
     <div className="bg-white rounded-xl shadow-md h-full flex flex-col">
         <div className='flex-shrink-0 p-4 border-b border-gray-200'>
-            <h2 className="text-lg font-semibold mb-4 text-gray-700">Chat / Search</h2>
+            <h2 className="text-lg font-semibold mb-2 text-gray-700">MagnecAI Chat / Search</h2>
         </div>
         <div className="flex-grow overflow-y-auto p-4 space-y-4">
           {loadingMessages ? (
@@ -159,7 +159,7 @@ const ChatBar: React.FC<ChatBarProps> = ({conversationId }) => {
         </div>
 
         <div className="flex-shrink-0 p-4 border-t border-gray-200">
-            <div className="flex items-end space-x-2">
+            <div className="flex items-center space-x-2">
                 <textarea
                     placeholder="Type your message..."
                     className="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
@@ -174,7 +174,7 @@ const ChatBar: React.FC<ChatBarProps> = ({conversationId }) => {
                     className="text-blue-500 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                     aria-label="Send message"
                 >
-                    <Send size={24} />
+                    <SendHorizontal size={24} />
                 </button>
             </div>
         </div>
