@@ -1,3 +1,5 @@
+// magnecruit_frontend\src\components\Workspace.tsx
+
 import React from 'react';
 
 const Workspace: React.FC = () => {

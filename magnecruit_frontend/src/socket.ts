@@ -1,12 +1,10 @@
+// magnecruit_frontend\src\socket.ts
+
 import io from 'socket.io-client';
 
-// For local dev: 'http://localhost:5000'
-// For production: 'https://your-production-backend-url.com'
-const BACKEND_URL = process.env.NODE_ENV === 'production'
-  ? 'https://your-production-backend-url.com' 
-  : 'http://localhost:5000'; 
+const SOCKET_URL = import.meta.env.VITE_REACT_APP_SOCKET_URL;
 
-export const socket = io(BACKEND_URL, {
+export const socket = io(SOCKET_URL, {
     autoConnect: false,
 });
 

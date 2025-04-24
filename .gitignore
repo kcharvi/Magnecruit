@@ -21,3 +21,5 @@ venv/
 .venv/
 env/
 .env_backup/
+
+*__pycahe__

@@ -1,5 +1,6 @@
-from . import db
+# magnecruit_backend\app\models.py
 
+from . import db
 from datetime import datetime
 
 class User(db.Model):
@@ -7,6 +8,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
+    password_hash = db.Column(db.String(128), nullable=True)
     conversations = db.relationship('Conversation', backref='user', lazy=True)
     sequences = db.relationship('Sequence', backref='user', lazy=True)
     preferences = db.relationship('UserPreference', backref='user', lazy=True)
@@ -46,7 +48,7 @@ class Sequence(db.Model):
     name = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
     steps = db.relationship('SequenceStep', backref='sequence', lazy=True, cascade="all, delete-orphan", order_by="SequenceStep.step_number")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
         return f'<Sequence {self.name}>'
