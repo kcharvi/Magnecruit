@@ -19,7 +19,7 @@ env/
 .env_backup/
 
 # Python bytecode cache
-**/__pycache__/
+__pycache__/
 
 # Other important ignores (add as needed)
 node_modules/
