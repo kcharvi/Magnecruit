@@ -19,6 +19,26 @@ import CandidateManagerView from "./ActionGridComponents/CandidateManagerView";
 import FollowUpReminderView from "./ActionGridComponents/FollowUpReminderView";
 import ExpenseSubmitterView from "./ActionGridComponents/ExpenseSubmitterView";
 
+// Define the SequenceData type
+interface SequenceStepData {
+    id: number;
+    step_number: number;
+    channel: string;
+    delay_days: number | null;
+    subject: string | null;
+    body: string;
+}
+
+interface SequenceData {
+    id: number;
+    conversation_id: number;
+    user_id: number;
+    name: string | null;
+    description: string | null;
+    steps: SequenceStepData[];
+    created_at: string;
+}
+
 interface ActionItem {
     id: string;
     title: string;
@@ -30,9 +50,9 @@ interface ActionItem {
 
 const actions: ActionItem[] = [
     {
-        id: "message-sequence",
-        title: "Message Curator",
-        description: "Structure messages to applicants and curate message sequences.",
+        id: "job-sequence",
+        title: "Job Description Writer",
+        description: "Draft your job description and publish on multiple sites with one-click.",
         icon: SquareStack,
         iconBgColor: "bg-teal-50",
         iconColor: "text-teal-600",
@@ -40,7 +60,7 @@ const actions: ActionItem[] = [
     {
         id: "linkedin-post-creation",
         title: "LinkedIn Post Creation",
-        description: "Quickly generate engaging job posts for LinkedIn.",
+        description: "Quickly generate engaging posts for LinkedIn.",
         icon: MessageSquareShare,
         iconBgColor: "bg-purple-50",
         iconColor: "text-purple-600",
@@ -81,7 +101,7 @@ const actions: ActionItem[] = [
 
 type WorkspaceView =
     | "actions"
-    | "message-sequence"
+    | "job-sequence"
     | "linkedin-post-creation"
     | "interview-scheduling"
     | "candidate-management"
@@ -90,10 +110,33 @@ type WorkspaceView =
 
 const Workspace: React.FC = () => {
     const [activeView, setActiveView] = useState<WorkspaceView>("actions");
+    const [currentSequence, setCurrentSequence] = useState<SequenceData | null>(null);
 
     const handleActionClick = (actionId: string) => {
         console.log(`Action clicked: ${actionId}`);
         setActiveView(actionId as WorkspaceView);
+
+        // Create mock data when job-sequence is selected
+        if (actionId === "job-sequence") {
+            setCurrentSequence({
+                id: 1,
+                conversation_id: 1,
+                user_id: 1,
+                name: "Sample Sequence",
+                description: "Sample job sequence for demonstration",
+                steps: [
+                    {
+                        id: 1,
+                        step_number: 1,
+                        channel: "email",
+                        delay_days: 0,
+                        subject: "Initial Contact",
+                        body: "This is the first step in our sequence.",
+                    },
+                ],
+                created_at: new Date().toISOString(),
+            });
+        }
     };
 
     const handleBackClick = () => {
@@ -102,8 +145,8 @@ const Workspace: React.FC = () => {
 
     const renderCurrentView = () => {
         switch (activeView) {
-            case "message-sequence":
-                return <SequenceCuratorView />;
+            case "job-sequence":
+                return <SequenceCuratorView currentSequence={currentSequence} />;
             case "linkedin-post-creation":
                 return <LinkedInPostCreatorView />;
             case "interview-scheduling":
@@ -123,7 +166,7 @@ const Workspace: React.FC = () => {
     return (
         <div className="bg-white rounded-xl shadow-md h-full flex flex-col overflow-hidden">
             <div className="flex-shrink-0 p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-700">
+                <h2 className="text-lg font-semibold mb-1 text-gray-700">
                     {activeView === "actions"
                         ? "Workspace"
                         : `Workspace: ${

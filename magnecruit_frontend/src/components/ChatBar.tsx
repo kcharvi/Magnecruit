@@ -123,7 +123,7 @@ const ChatBar: React.FC<ChatBarProps> = ({conversationId }) => {
   return (
     <div className="bg-white rounded-xl shadow-md h-full flex flex-col">
         <div className='flex-shrink-0 p-4 border-b border-gray-200'>
-            <h2 className="text-lg font-semibold mb-2 text-gray-700">MagnecAI Chat / Search</h2>
+            <h2 className="text-lg font-semibold mb-1 text-gray-700">MagnecAI Chat / Search</h2>
         </div>
         <div className="flex-grow overflow-y-auto p-4 space-y-4">
           {loadingMessages ? (

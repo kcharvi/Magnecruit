@@ -4,7 +4,7 @@ from . import socketio
 from flask_socketio import emit, join_room, leave_room, disconnect
 from flask import request, session
 from . import db
-from .agent.llm_interface import get_gemini_response
+from .agent import sequence_service
 from .models import Message, Conversation
 from datetime import datetime, timezone
 
@@ -56,35 +56,34 @@ def fetch_and_format_history(conversation_id, db_session):
 @socketio.on('send_user_message')
 def handle_user_message(data):
     user_id = session.get('user_id')
-    
     if not user_id:
-        emit('error', {'msg': 'Authentication error. Cannot process message. Please log in again.'}, room=request.sid)
-        print(f"Error: User ID not found in session for SID {request.sid} during message send.")
+        emit('error', {'msg': 'Authentication error.'}, room=request.sid)
         return
 
     message_content = data.get('content')
     conversation_id = data.get('conversationId')
 
     if not message_content:
-        emit('error', {'msg': 'Invalid message data: content missing.'}, room=request.sid)
+        emit('error', {'msg': 'Invalid message data.'}, room=request.sid)
         return
 
-    print(f"Received message from user {user_id}. Content: '{message_content}'. Target Conversation ID: {conversation_id}")
+    print(f"(WS) Received message from user {user_id}. Convo ID: {conversation_id}")
 
     try:
+        # --- Create Conversation if needed ---
         new_conversation_created = False
         if not conversation_id:
-            print(f"No conversationId provided. Creating a new conversation for user {user_id}.")
-            new_conversation = Conversation(
-                user_id=user_id, 
-                created_at=datetime.now(timezone.utc)
-            )
+            print(f"(WS) Creating new conversation for user {user_id}.")
+            # Create conversation but commit later with messages
+            new_conversation = Conversation(user_id=user_id, created_at=datetime.now(timezone.utc))
             db.session.add(new_conversation)
             db.session.flush() 
             conversation_id = new_conversation.id
             new_conversation_created = True
-            print(f"New conversation created with ID: {conversation_id}")
+            print(f"(WS) New conversation ID: {conversation_id}")
         
+        # --- Save User Message --- 
+        # Add user message to session first, THEN fetch history
         new_user_message_db = Message(
             conversation_id=conversation_id,
             sender='user',
@@ -92,49 +91,78 @@ def handle_user_message(data):
             timestamp=datetime.now(timezone.utc)
         )
         db.session.add(new_user_message_db)
-
-        print(f"Calling AI service (Gemini Flash 1.5) for conversation {conversation_id}...")
+        db.session.flush() # Ensure message exists before history fetch
+        
+        # --- Process Chat via Sequence Service ---
         conversation_history = fetch_and_format_history(conversation_id, db.session)
-        ai_response_content = get_gemini_response(message_content, conversation_history)
+        raw_ai_response, updated_sequence = sequence_service.process_chat_for_sequence(
+            user_id, conversation_id, message_content, conversation_history
+        )
 
-        print(f"Received AI response for conversation {conversation_id}: {ai_response_content[:100]}...")
-
-        if ai_response_content.startswith("AI service is not configured") or ai_response_content.startswith("Sorry, I encountered an error"):
-             db.session.rollback() 
-             emit('error', {'msg': ai_response_content}, room=request.sid)
-             print(f"AI Service Error for conversation {conversation_id}: {ai_response_content}")
-             return
-
+        # --- Save AI Response Message --- 
         new_ai_message_db = Message(
             conversation_id=conversation_id,
             sender='ai',
-            content=ai_response_content,
+            content=raw_ai_response, # Save the raw response from the service
             timestamp=datetime.now(timezone.utc)
         )
         db.session.add(new_ai_message_db)
         
-        db.session.commit()
-        print(f"User and AI messages saved for conversation {conversation_id}.")
+        # --- Commit Messages --- 
+        # Sequence saving is handled within the service, just commit messages here
+        db.session.commit() 
+        print("(WS) User and AI messages committed.")
 
+        # --- Emit Responses to Frontend ---
+        # 1. Emit the raw AI response for chat history
         emit('ai_response', {
             'id': new_ai_message_db.id,
             'conversationId': conversation_id, 
             'sender': 'ai',
-            'content': ai_response_content,
+            'content': raw_ai_response, 
         }, room=f'user_{user_id}') 
+        print("(WS) Emitted ai_response.")
 
+        # 2. Emit conversation_created if it was a new one
         if new_conversation_created:
              emit('conversation_created', {
                 'conversationId': conversation_id, 
-                'title': None 
+                'title': None # Title might be set by sequence later
              }, room=f'user_{user_id}') 
+             print("(WS) Emitted conversation_created.")
+        
+        # 3. Emit sequence_updated if the service returned an updated sequence
+        if updated_sequence:
+            # Format the payload correctly for the frontend
+            updated_sequence_payload = {
+                'id': updated_sequence.id,
+                'conversation_id': updated_sequence.conversation_id,
+                'user_id': updated_sequence.user_id,
+                'name': updated_sequence.name,
+                'description': updated_sequence.description,
+                'created_at': updated_sequence.created_at.isoformat() if updated_sequence.created_at else None,
+                # Ensure steps are loaded and sorted
+                'steps': sorted([
+                    {
+                        'id': step.id,
+                        'step_number': step.step_number,
+                        'channel': step.channel,
+                        'delay_days': step.delay_days,
+                        'subject': step.subject,
+                        'body': step.body
+                    }
+                    for step in updated_sequence.steps # Access steps relation
+                ], key=lambda s: s['step_number'])
+            }
+            print(f"(WS) Emitting sequence_updated for sequence {updated_sequence.id}")
+            emit('sequence_updated', updated_sequence_payload, room=f'user_{user_id}')
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error processing message for conversation {conversation_id} / user {user_id}: {e}")
+        print(f"(WS) Critical error in handle_user_message: {e}")
         import traceback
         traceback.print_exc() 
-        emit('error', {'msg': f'An internal error occurred while processing your message.'}, room=request.sid)
+        emit('error', {'msg': 'An internal server error occurred.'}, room=request.sid)
 
 @socketio.on('request_conversation_messages')
 def handle_request_conversation_messages(data):
