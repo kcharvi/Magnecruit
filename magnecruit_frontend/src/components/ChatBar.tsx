@@ -3,21 +3,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SendHorizontal } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { Message } from "../lib/types";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 interface ChatBarProps {
-    conversationId: number | null;
-    messages: Message[];
     isLoading: boolean;
     onSendMessage: (content: string) => void;
 }
 
-const ChatBar: React.FC<ChatBarProps> = ({
-    conversationId,
-    messages,
-    isLoading,
-    onSendMessage,
-}) => {
+const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
+    const conversationId = useSelector((state: RootState) => state.chat.selectedConversationId);
+    const messages = useSelector((state: RootState) => state.chat.messages);
+
     const [inputText, setInputText] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -91,13 +88,13 @@ const ChatBar: React.FC<ChatBarProps> = ({
                         onChange={handleInputChange}
                         onKeyDown={handleKeyPress}
                         rows={3}
-                        disabled={conversationId === null && messages.length > 0}
+                        disabled={conversationId === null || isLoading}
                     />
                     <button
                         onClick={handleSendClick}
                         className="p-2 text-blue-500 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:hover:bg-transparent"
                         aria-label="Send message"
-                        disabled={!inputText.trim() || isLoading}
+                        disabled={!inputText.trim() || conversationId === null || isLoading}
                     >
                         <SendHorizontal size={20} />
                     </button>

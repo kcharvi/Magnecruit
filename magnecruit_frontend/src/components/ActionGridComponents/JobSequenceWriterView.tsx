@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 import axios, { AxiosError } from "axios";
-// Import shared types
 import { SequenceData, SequenceStepData } from "../../lib/types";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
-// Type for steps being sent to the backend save endpoint
 interface SequenceStepInputData {
     step_number: number;
     heading: string;
@@ -16,16 +16,15 @@ interface SequenceStepInputData {
 }
 
 interface SequenceCuratorViewProps {
-    conversationId?: number;
     userId?: number;
     onRef?: (ref: { updateSequence: (data: Partial<SequenceData>) => void }) => void;
 }
 
-const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
-    conversationId,
-    userId,
-    onRef,
-}) => {
+const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef }) => {
+    const selectedConversationId = useSelector(
+        (state: RootState) => state.chat.selectedConversationId
+    );
+
     const [sequence, setSequence] = useState<SequenceData>({
         jobrole: "",
         description: "",
@@ -45,20 +44,19 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
     const updateSequence = useCallback((data: Partial<SequenceData>) => {
         console.log("SequenceCuratorView: updateSequence called with:", data);
         setSequence((prevState) => {
-            // Merge intelligently, ensuring steps are overwritten if provided
             const newState = { ...prevState, ...data };
-            // Ensure jobrole/name consistency
             if (data.jobrole) {
                 newState.jobrole = data.jobrole;
             }
-            // Make sure steps array is replaced, not merged if provided
+            if (data.description) {
+                newState.description = data.description;
+            }
             if (data.steps) {
                 newState.steps = data.steps;
             }
             return newState;
         });
         setSuccess("Job description updated from chat");
-        // Clear error/success messages after a delay
         setTimeout(() => setSuccess(""), 5000);
     }, []);
 
@@ -73,15 +71,12 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
             try {
                 setLoading(true);
                 setError("");
-                console.log(`JobSequenceWriterView: Fetching sequence for conversation ${convId}`);
+                console.log(`SequenceCuratorView: Fetching sequence for conversation ${convId}`);
                 const response = await axios.get<SequenceData>(
                     `${API_BASE_URL}/job-sequence/get/${convId}`
                 );
                 const fetchedData = response.data;
-                console.log(
-                    "JobSequenceWriterView: Sequence data fetched successfully",
-                    fetchedData
-                );
+                console.log("SequenceCuratorView: Sequence data fetched successfully", fetchedData);
                 fetchedData.steps =
                     fetchedData.steps?.sort((a, b) => a.step_number - b.step_number) || [];
                 fetchedData.jobrole = fetchedData.jobrole || "";
@@ -90,7 +85,7 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
             } catch (err) {
                 if (axios.isAxiosError(err) && err.response?.status === 404) {
                     console.log(
-                        `JobSequenceWriterView: No existing sequence found for conversation ${convId} (404). Setting initial state.`
+                        `SequenceCuratorView: No existing sequence found for conversation ${convId} (404). Setting initial state.`
                     );
                     setSequence({
                         conversation_id: convId,
@@ -132,7 +127,7 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
                     });
                     setError("");
                 } else {
-                    console.error("JobSequenceWriterView: Error fetching sequence:", err);
+                    console.error("SequenceCuratorView: Error fetching sequence:", err);
                     setError("Failed to load job description data. Please try refreshing.");
                     setSequence({
                         conversation_id: convId,
@@ -157,10 +152,12 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
     );
 
     useEffect(() => {
-        if (conversationId) {
-            fetchSequence(conversationId);
+        if (selectedConversationId) {
+            fetchSequence(selectedConversationId);
         } else {
-            console.log("JobSequenceWriterView: No conversation selected. Resetting state.");
+            console.log(
+                "SequenceCuratorView: No conversation selected (from Redux). Resetting state."
+            );
             setSequence({
                 jobrole: "",
                 description: "",
@@ -171,13 +168,12 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
                         heading: "About the Company / Role",
                         body: "",
                     },
-                    // Add other default steps
                 ],
             });
             setLoading(false);
             setError("");
         }
-    }, [conversationId, fetchSequence]);
+    }, [selectedConversationId, fetchSequence]);
 
     const handleJobroleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSequence((prevState) => ({
@@ -256,12 +252,19 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
             return;
         }
 
+        const currentConvId = selectedConversationId;
+
+        if (!currentConvId) {
+            setError("Cannot save: No active conversation selected.");
+            setTimeout(() => setError(""), 5000);
+            return;
+        }
+
         setLoading(true);
         setError("");
         setSuccess("");
 
         try {
-            // Map steps to the input type expected by the backend
             const stepsInput: SequenceStepInputData[] = sequence.steps.map((step) => ({
                 step_number: step.step_number,
                 heading: step.heading,
@@ -269,17 +272,18 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
             }));
 
             const dataToSend = {
-                // Send only necessary fields for save/update
-                id: sequence.id, // Include ID if updating an existing sequence
-                conversation_id: conversationId || sequence.conversation_id,
+                id: sequence.id,
+                conversation_id: currentConvId,
                 user_id: userId || sequence.user_id,
                 jobrole: sequence.jobrole,
                 description: sequence.description,
                 steps: stepsInput,
             };
 
-            if (!dataToSend.conversation_id || !dataToSend.user_id) {
-                throw new Error("Conversation ID and User ID are required to save");
+            if (!dataToSend.user_id) {
+                console.warn(
+                    "SequenceCuratorView: User ID is missing when trying to save. Ensure userId prop is passed or retrieved."
+                );
             }
 
             console.log("Saving sequence data:", dataToSend);
@@ -290,23 +294,22 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
             }>(`${API_BASE_URL}/job-sequence/save`, dataToSend);
             console.log("Sequence saved response:", response.data);
 
-            // Update local state based on backend response
             if (response.data.id) {
-                // If backend returns full updated sequence with step IDs:
                 if (response.data.steps && Array.isArray(response.data.steps)) {
                     setSequence((prev) => ({
                         ...prev,
                         id: response.data.id,
+                        conversation_id: currentConvId,
                         steps: response.data.steps!.map((s) => ({
                             ...s,
                             heading: s.heading || "",
                         })),
                     }));
                 } else {
-                    // Only update the sequence ID if steps aren't returned or valid
                     setSequence((prevState) => ({
                         ...prevState,
                         id: response.data.id,
+                        conversation_id: currentConvId,
                     }));
                 }
             }
@@ -314,11 +317,10 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
             setSuccess(response.data.message || "Job description saved successfully!");
             setTimeout(() => setSuccess(""), 5000);
         } catch (err: unknown) {
-            // Type error as unknown
             console.error("Error saving sequence:", err);
             let errorMsg = "Failed to save job description. Please try again.";
             if (axios.isAxiosError(err)) {
-                const axiosError = err as AxiosError<{ error?: string }>; // Type assertion
+                const axiosError = err as AxiosError<{ error?: string }>;
                 errorMsg = axiosError.response?.data?.error || axiosError.message || errorMsg;
             } else if (err instanceof Error) {
                 errorMsg = err.message;
@@ -426,7 +428,7 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({
             <div className="p-4 border-t border-gray-200 flex justify-end">
                 <button
                     onClick={saveSequence}
-                    disabled={loading}
+                    disabled={loading || !selectedConversationId}
                     className="text-sm px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center"
                 >
                     {loading ? (

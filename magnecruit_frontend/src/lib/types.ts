@@ -1,3 +1,5 @@
+// magnecruit_frontend\src\lib\types.ts
+
 export interface SequenceStepData {
     id: number;
     step_number: number;
@@ -9,7 +11,7 @@ export interface SequenceData {
     id?: number;
     conversation_id?: number;
     user_id?: number;
-    jobrole: string; // Corresponds to 'name' or 'jobrole' in backend models/sockets
+    jobrole: string; 
     description: string;
     steps: SequenceStepData[];
     created_at?: string;

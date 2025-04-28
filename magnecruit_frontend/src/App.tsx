@@ -1,27 +1,30 @@
 // magnecruit_frontend\src\App.tsx
 
 import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { socket } from "./socket";
 import MainLayout from "./layouts/MainLayout";
 import Chatbar from "./components/ChatBar";
 import Workspace from "./components/Workspace";
 import LoginModal from "./components/LoginModal";
 import { ConversationSummary, User, SequenceData, Message } from "./lib/types";
-import { AppDispatch } from "./store/store";
+import { AppDispatch, RootState } from "./store/store";
 import { setAiGeneratedSequence } from "./store/workspaceSlice";
+import { setMessages, addMessage, clearMessages, setSelectedConversation } from "./store/chatSlice";
 
 const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 
 const App: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
 
-    const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
+    const selectedConversationId = useSelector(
+        (state: RootState) => state.chat.selectedConversationId
+    );
+
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isLoadingSession, setIsLoadingSession] = useState(true);
-    const [messages, setMessages] = useState<Message[]>([]);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
     useEffect(() => {
@@ -86,12 +89,9 @@ const App: React.FC = () => {
     }, []);
 
     const handleConversationSelect = (id: number | null) => {
-        console.log("Conversation selected:", id);
-        if (id !== selectedConversationId) {
-            setSelectedConversationId(id);
-            setMessages([]);
-            setIsLoadingMessages(id !== null);
-        }
+        console.log("Conversation selected, dispatching to Redux:", id);
+        dispatch(setSelectedConversation(id));
+        setIsLoadingMessages(id !== null);
     };
 
     const handleNewChat = () => {
@@ -100,8 +100,9 @@ const App: React.FC = () => {
             setIsLoginModalOpen(true);
             return;
         }
-        setSelectedConversationId(null);
-        setMessages([]);
+        console.log("New chat requested, dispatching to Redux...");
+        dispatch(setSelectedConversation(null));
+        dispatch(clearMessages());
         setIsLoadingMessages(false);
         console.log("Frontend state reset for new chat visual. Ready for first message.");
     };
@@ -118,8 +119,9 @@ const App: React.FC = () => {
         console.log("Login successful on frontend for:", user);
         setCurrentUser(user);
         setIsLoginModalOpen(false);
-        setSelectedConversationId(null);
-        setMessages([]);
+        console.log("Login success: dispatching null conversation and clearing messages...");
+        dispatch(setSelectedConversation(null));
+        dispatch(clearMessages());
     };
 
     const handleLogoutClick = async () => {
@@ -138,9 +140,10 @@ const App: React.FC = () => {
             console.error("Error during logout fetch:", error);
         }
         setCurrentUser(null);
-        setSelectedConversationId(null);
         setConversations([]);
-        setMessages([]);
+        console.log("Logout: dispatching null conversation and clearing messages...");
+        dispatch(setSelectedConversation(null));
+        dispatch(clearMessages());
         if (socket.connected) {
             console.log("Disconnecting socket after logout.");
             socket.disconnect();
@@ -150,17 +153,34 @@ const App: React.FC = () => {
     useEffect(() => {
         if (selectedConversationId !== null && socket.connected && currentUser) {
             console.log(
-                `(App Effect) Requesting messages for conversation: ${selectedConversationId}`
+                `(App Effect) Requesting messages for conversation (from Redux state): ${selectedConversationId}`
             );
             setIsLoadingMessages(true);
             socket.emit("request_conversation_messages", {
                 conversationId: selectedConversationId,
             });
+        } else {
+            console.log(
+                "(App Effect) Skipping message request. Reason: No selected convo / socket disconnected / no user",
+                {
+                    selectedConversationId,
+                    connected: socket.connected,
+                    currentUser: !!currentUser,
+                }
+            );
+            if (selectedConversationId === null) {
+                dispatch(clearMessages());
+            }
+            setIsLoadingMessages(false);
         }
-    }, [selectedConversationId, currentUser]);
+    }, [selectedConversationId, currentUser, dispatch]);
 
     useEffect(() => {
         console.log("Socket effect: Managing connection and events. Current user:", currentUser);
+        console.log(
+            "Socket effect: Current selectedConversationId (from Redux):",
+            selectedConversationId
+        );
 
         function onConnect() {
             console.log("Socket connected:", socket.id);
@@ -199,7 +219,8 @@ const App: React.FC = () => {
                 created_at: new Date().toISOString(),
             };
             setConversations((prev) => [newConversation, ...prev]);
-            setSelectedConversationId(data.conversationId);
+            dispatch(setSelectedConversation(data.conversationId));
+            setIsLoadingMessages(true);
         }
 
         function handleSequenceUpdate(data: SequenceData) {
@@ -211,12 +232,7 @@ const App: React.FC = () => {
         function handleAiResponse(message: Message) {
             console.log("App: Received ai_response:", message);
             if (message.conversation_id === selectedConversationId) {
-                setMessages((prev) => {
-                    if (prev.some((m) => m.id === message.id)) {
-                        return prev;
-                    }
-                    return [...prev, message];
-                });
+                dispatch(addMessage(message));
             } else {
                 console.log(
                     `App: Ignoring ai_response for conversation ${message.conversation_id} (current is ${selectedConversationId})`
@@ -226,8 +242,11 @@ const App: React.FC = () => {
 
         function handleConversationMessages(data: { conversationId: number; messages: Message[] }) {
             if (data.conversationId === selectedConversationId) {
-                console.log("(App Handler) Received conversation messages:", data.messages.length);
-                setMessages(data.messages);
+                console.log(
+                    "(App Handler) Received conversation messages, dispatching setMessages:",
+                    data.messages.length
+                );
+                dispatch(setMessages(data.messages));
                 setIsLoadingMessages(false);
             } else {
                 console.log(
@@ -275,9 +294,8 @@ const App: React.FC = () => {
         if (!currentUser) return;
 
         const currentConvoId = selectedConversationId;
-        console.log("handleSendMessage - Current conversation ID:", currentConvoId);
+        console.log("handleSendMessage - Current conversation ID (from Redux):", currentConvoId);
 
-        // --- Optimistic Update ---
         const optimisticUserMessage: Message = {
             id: `temp-${Date.now()}`,
             sender: "user",
@@ -286,10 +304,9 @@ const App: React.FC = () => {
             conversation_id: currentConvoId === null ? undefined : currentConvoId,
         };
 
-        setMessages((prev) => [...prev, optimisticUserMessage]);
-        console.log("App: Optimistically added user message:", optimisticUserMessage);
+        dispatch(addMessage(optimisticUserMessage));
+        console.log("App: Optimistically added user message via Redux:", optimisticUserMessage);
 
-        // --- Send to Backend ---
         console.log(
             "App: Emitting user message via socket. Target Conversation ID:",
             currentConvoId
@@ -302,7 +319,6 @@ const App: React.FC = () => {
             });
         } else {
             console.error("Socket not connected. Cannot send message.");
-            setMessages((prev) => prev.filter((msg) => msg.id !== optimisticUserMessage.id));
             alert("Connection error: Could not send message.");
         }
     };
@@ -315,14 +331,9 @@ const App: React.FC = () => {
         <>
             <MainLayout
                 chatPanel={
-                    <Chatbar
-                        conversationId={selectedConversationId}
-                        messages={messages}
-                        isLoading={isLoadingMessages}
-                        onSendMessage={handleSendMessage}
-                    />
+                    <Chatbar isLoading={isLoadingMessages} onSendMessage={handleSendMessage} />
                 }
-                workspacePanel={<Workspace selectedConversationId={selectedConversationId} />}
+                workspacePanel={<Workspace />}
                 conversations={conversations}
                 selectedConversationId={selectedConversationId}
                 currentUser={currentUser}

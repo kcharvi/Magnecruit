@@ -91,13 +91,11 @@ type WorkspaceView =
     | "follow-up"
     | "submit-expense";
 
-// Define component props
-interface WorkspaceProps {
-    selectedConversationId: number | null;
-}
+const Workspace: React.FC = () => {
+    const selectedConversationId = useSelector(
+        (state: RootState) => state.chat.selectedConversationId
+    );
 
-const Workspace: React.FC<WorkspaceProps> = ({ selectedConversationId }) => {
-    // Get sequence data from Redux store
     const aiGeneratedSequence = useSelector(
         (state: RootState) => state.workspace.aiGeneratedSequence
     );
@@ -117,16 +115,14 @@ const Workspace: React.FC<WorkspaceProps> = ({ selectedConversationId }) => {
         setActiveView("actions");
     };
 
-    // useEffect to handle updates from AI via Redux store
     useEffect(() => {
-        // Check if the sequence from Redux store exists AND belongs to the currently selected conversation
         if (aiGeneratedSequence && aiGeneratedSequence.conversation_id === selectedConversationId) {
             console.log(
                 "Workspace: Detected relevant AI sequence data from Redux for convo:",
                 selectedConversationId,
                 aiGeneratedSequence
             );
-            setCurrentSequence(aiGeneratedSequence); // Update local state for rendering
+            setCurrentSequence(aiGeneratedSequence);
 
             if (sequenceCuratorRef.current && activeView === "job-sequence") {
                 console.log("Workspace: Updating SequenceCuratorView via ref");
@@ -136,23 +132,20 @@ const Workspace: React.FC<WorkspaceProps> = ({ selectedConversationId }) => {
                     `Workspace: SequenceCuratorView ref not available or view is not active ('${activeView}').`
                 );
             }
+        } else if (currentSequence && currentSequence.conversation_id !== selectedConversationId) {
+            console.log(
+                `Workspace: Conversation changed (from ${currentSequence.conversation_id} to ${selectedConversationId}). Clearing local sequence state.`
+            );
+            setCurrentSequence(null);
         }
-        // Optional: Clear local state if the relevant sequence changes or becomes null
-        // else if (currentSequence && currentSequence.conversation_id === selectedConversationId) {
-        //     // If the sequence in Redux is gone OR for a different convo,
-        //     // clear the local state if it currently holds data for the selected convo.
-        //     setCurrentSequence(null);
-        // }
-    }, [aiGeneratedSequence, selectedConversationId, activeView]); // Add selectedConversationId dependency
+    }, [aiGeneratedSequence, selectedConversationId, activeView, currentSequence]);
 
     const renderCurrentView = () => {
         switch (activeView) {
             case "job-sequence":
                 return (
                     <SequenceCuratorView
-                        // Pass the selectedConversationId and potentially userId down
-                        conversationId={selectedConversationId || undefined}
-                        userId={currentSequence?.user_id || undefined} // Keep userId from sequence if available
+                        userId={currentSequence?.user_id || undefined}
                         onRef={(ref) => (sequenceCuratorRef.current = ref)}
                     />
                 );

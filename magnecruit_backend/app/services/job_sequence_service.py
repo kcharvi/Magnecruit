@@ -4,7 +4,6 @@ from .. import db
 from ..models import Sequence, SequenceStep
 from ..agent import llm_interface
 from ..agent import parsing
-# Import the new prompt structures
 from ..agent.prompt_builder import (
     SYSTEM_PROMPT_JOB_SEQUENCE, 
     BUILD_JOB_SEQUENCE_PROMPT,
@@ -148,7 +147,7 @@ def process_chat_for_sequence(user_id: int,
                     print(f"(JobSequenceService) Sequence {updated_sequence.id} updated. Got confirmation: '{text_for_chat}'")
                 else:
                     error_message_for_client = "Failed to save the updated sequence data due to an internal error."
-                    text_for_chat = f"Error: Could not save sequence. AI suggested JSON:\n```json\n{json.dumps(parsed_data, indent=2)}\n```" # Show user the JSON on save error
+                    text_for_chat = f"Error: Could not save sequence. AI suggested JSON:\n```json\n{json.dumps(parsed_data, indent=2)}\n```"
             else:
                 print("(JobSequenceService) Failed to parse valid sequence JSON from AI response. Treating as text.")
                 text_for_chat = raw_json_response 
