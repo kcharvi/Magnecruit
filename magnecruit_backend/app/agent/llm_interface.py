@@ -10,30 +10,30 @@ if not API_KEY:
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-MODEL_NAME = 'gemini-1.5-flash-latest'
+MODEL_NAME = 'gemini-2.5-flash-preview-04-17' 
 
-def get_gemini_response(user_message_content:str, conversation_history: list = None):
+def get_gemini_model():
+    return genai.GenerativeModel(MODEL_NAME)
+
+def get_generation_config_params():
+    return { 
+        "temperature": 0.8, "top_p": 0.95, "top_k": 40, "max_output_tokens": 4096,
+    }
+
+def get_gemini_response(user_message_content: str, conversation_history: list = None, tools: list = None):
     if not API_KEY:
-        return "AI service is not configured. Please check the API key."
+        return {"error": "AI service is not configured. Please check the API key."} 
     
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
+        model = genai.GenerativeModel(
+            MODEL_NAME, 
+            tools=tools 
+        )
 
         chat_session = model.start_chat(history=conversation_history or [])
         response = chat_session.send_message(user_message_content)
+        return response 
 
-        if response and response.text:
-            return response.text
-        else:
-            print("Warning: Gemini API returned a response with no text content.", response)
-            return "I'm sorry, I couldn't generate a text response."
     except Exception as e:
         print(f"Error calling Google Gemini API: {e}")
-        return "Sorry, I encountered an error while getting a response from the AI."
-
-# Other functions here for processing messages, managing memory, etc.
-# For example, a function to fetch and format history from your DB:
-# def fetch_and_format_history(conversation_id, db_session):
-#     # Query Message model for messages related to conversation_id, ordered by timestamp
-#     # Format results into [{'role': 'user'|'model', 'parts': [content]}, ...]
-#     pass
+        return {"error": f"Sorry, I encountered an error calling the AI: {e}"} 

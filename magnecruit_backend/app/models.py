@@ -45,22 +45,20 @@ class Sequence(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(255), nullable=True)
+    jobrole = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
     steps = db.relationship('SequenceStep', backref='sequence', lazy=True, cascade="all, delete-orphan", order_by="SequenceStep.step_number")
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
-        return f'<Sequence {self.name}>'
+        return f'<Sequence {self.name or self.jobrole}>'
 
 class SequenceStep(db.Model):
     __tablename__ = 'sequence_step'
     id = db.Column(db.Integer, primary_key=True)
     sequence_id = db.Column(db.Integer, db.ForeignKey('sequence.id'), nullable=False)
     step_number = db.Column(db.Integer, nullable=False)
-    channel = db.Column(db.String(50), nullable=False)
-    delay_days = db.Column(db.Integer, nullable=True)
-    subject = db.Column(db.String(255), nullable=True)
+    heading = db.Column(db.String(255), nullable=True)
     body = db.Column(db.Text, nullable=False)
 
     def __repr__(self):

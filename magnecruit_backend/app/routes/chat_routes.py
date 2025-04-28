@@ -3,7 +3,6 @@
 from flask import Blueprint, jsonify, session
 from .. import db
 from ..models import Conversation
-from datetime import datetime, timezone
 
 chat_bp = Blueprint('chat_bp', __name__, url_prefix='/api/chat')
 

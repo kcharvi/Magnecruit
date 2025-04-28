@@ -8,4 +8,7 @@ psycopg2-binary
 requests      
 google.generativeai
 eventlet
-dotenv
+python-dotenv
+langchain
+langchain-community
+crewai

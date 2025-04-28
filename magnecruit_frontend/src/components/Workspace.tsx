@@ -1,6 +1,7 @@
 // magnecruit_frontend\src\components\Workspace.tsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import {
     SquareStack,
     CalendarClock,
@@ -12,32 +13,14 @@ import {
 } from "lucide-react";
 
 import ActionGridView from "./ActionGridView";
-import SequenceCuratorView from "./ActionGridComponents/SequenceCuratorView";
+import SequenceCuratorView from "./ActionGridComponents/JobSequenceWriterView";
 import LinkedInPostCreatorView from "./ActionGridComponents/LinkedInPostCreatorView";
 import InterviewSchedulerView from "./ActionGridComponents/InterviewSchedulerView";
 import CandidateManagerView from "./ActionGridComponents/CandidateManagerView";
 import FollowUpReminderView from "./ActionGridComponents/FollowUpReminderView";
 import ExpenseSubmitterView from "./ActionGridComponents/ExpenseSubmitterView";
-
-// Define the SequenceData type
-interface SequenceStepData {
-    id: number;
-    step_number: number;
-    channel: string;
-    delay_days: number | null;
-    subject: string | null;
-    body: string;
-}
-
-interface SequenceData {
-    id: number;
-    conversation_id: number;
-    user_id: number;
-    name: string | null;
-    description: string | null;
-    steps: SequenceStepData[];
-    created_at: string;
-}
+import { SequenceData } from "../lib/types";
+import { RootState } from "../store/store";
 
 interface ActionItem {
     id: string;
@@ -108,45 +91,71 @@ type WorkspaceView =
     | "follow-up"
     | "submit-expense";
 
-const Workspace: React.FC = () => {
+// Define component props
+interface WorkspaceProps {
+    selectedConversationId: number | null;
+}
+
+const Workspace: React.FC<WorkspaceProps> = ({ selectedConversationId }) => {
+    // Get sequence data from Redux store
+    const aiGeneratedSequence = useSelector(
+        (state: RootState) => state.workspace.aiGeneratedSequence
+    );
+
     const [activeView, setActiveView] = useState<WorkspaceView>("actions");
     const [currentSequence, setCurrentSequence] = useState<SequenceData | null>(null);
+    const sequenceCuratorRef = useRef<{
+        updateSequence: (data: Partial<SequenceData>) => void;
+    } | null>(null);
 
     const handleActionClick = (actionId: string) => {
         console.log(`Action clicked: ${actionId}`);
         setActiveView(actionId as WorkspaceView);
-
-        // Create mock data when job-sequence is selected
-        if (actionId === "job-sequence") {
-            setCurrentSequence({
-                id: 1,
-                conversation_id: 1,
-                user_id: 1,
-                name: "Sample Sequence",
-                description: "Sample job sequence for demonstration",
-                steps: [
-                    {
-                        id: 1,
-                        step_number: 1,
-                        channel: "email",
-                        delay_days: 0,
-                        subject: "Initial Contact",
-                        body: "This is the first step in our sequence.",
-                    },
-                ],
-                created_at: new Date().toISOString(),
-            });
-        }
     };
 
     const handleBackClick = () => {
         setActiveView("actions");
     };
 
+    // useEffect to handle updates from AI via Redux store
+    useEffect(() => {
+        // Check if the sequence from Redux store exists AND belongs to the currently selected conversation
+        if (aiGeneratedSequence && aiGeneratedSequence.conversation_id === selectedConversationId) {
+            console.log(
+                "Workspace: Detected relevant AI sequence data from Redux for convo:",
+                selectedConversationId,
+                aiGeneratedSequence
+            );
+            setCurrentSequence(aiGeneratedSequence); // Update local state for rendering
+
+            if (sequenceCuratorRef.current && activeView === "job-sequence") {
+                console.log("Workspace: Updating SequenceCuratorView via ref");
+                sequenceCuratorRef.current.updateSequence(aiGeneratedSequence);
+            } else {
+                console.log(
+                    `Workspace: SequenceCuratorView ref not available or view is not active ('${activeView}').`
+                );
+            }
+        }
+        // Optional: Clear local state if the relevant sequence changes or becomes null
+        // else if (currentSequence && currentSequence.conversation_id === selectedConversationId) {
+        //     // If the sequence in Redux is gone OR for a different convo,
+        //     // clear the local state if it currently holds data for the selected convo.
+        //     setCurrentSequence(null);
+        // }
+    }, [aiGeneratedSequence, selectedConversationId, activeView]); // Add selectedConversationId dependency
+
     const renderCurrentView = () => {
         switch (activeView) {
             case "job-sequence":
-                return <SequenceCuratorView currentSequence={currentSequence} />;
+                return (
+                    <SequenceCuratorView
+                        // Pass the selectedConversationId and potentially userId down
+                        conversationId={selectedConversationId || undefined}
+                        userId={currentSequence?.user_id || undefined} // Keep userId from sequence if available
+                        onRef={(ref) => (sequenceCuratorRef.current = ref)}
+                    />
+                );
             case "linkedin-post-creation":
                 return <LinkedInPostCreatorView />;
             case "interview-scheduling":
@@ -183,7 +192,7 @@ const Workspace: React.FC = () => {
                 </button>
             </div>
 
-            <div className="flex-grow p-4 md:p-6 overflow-y-auto bg-gray-100">
+            <div className="flex-grow p-4 md:p-4 overflow-y-auto bg-gray-100">
                 {renderCurrentView()}
             </div>
         </div>
