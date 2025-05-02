@@ -3,75 +3,62 @@
 from . import db
 from datetime import datetime
 
-class User(db.Model):
-    __tablename__ = 'user'
+class Users(db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(128), nullable=True)
-    conversations = db.relationship('Conversation', backref='user', lazy=True)
-    sequences = db.relationship('Sequence', backref='user', lazy=True)
-    preferences = db.relationship('UserPreference', backref='user', lazy=True)
+    conversations = db.relationship('Conversations', backref='users', lazy=True)
+    jobs = db.relationship('Jobs', backref='users', lazy=True)
     created_at = db.Column(db.DateTime, default=datetime)
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f'<Users {self.username}>'
 
-class Conversation(db.Model):
-    __tablename__ = 'conversation'
+class Conversations(db.Model):
+    __tablename__ = 'conversations'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title = db.Column(db.String(255), nullable=True)
-    messages = db.relationship('Message', backref='conversation', lazy=True, cascade="all, delete-orphan")
-    sequence = db.relationship('Sequence', backref='conversation', uselist=False, lazy=True, cascade="all, delete-orphan")
+    messages = db.relationship('Messages', backref='conversations', lazy=True, cascade="all, delete-orphan")
+    jobs = db.relationship('Jobs', backref='conversations', uselist=False, lazy=True, cascade="all, delete-orphan")
     created_at = db.Column(db.DateTime, default=datetime)
 
     def __repr__(self):
-        return f'<Conversation {self.id}>'
+        return f'<Conversations {self.id}>'
 
-class Message(db.Model):
-    __tablename__ = 'message'
+class Messages(db.Model):
+    __tablename__ = 'messages'
     id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False)
     sender = db.Column(db.String(10), nullable=False) 
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime)
 
     def __repr__(self):
-        return f'<Message {self.id} from {self.sender}>'
+        return f'<Messages {self.id} from {self.sender}>'
 
-class Sequence(db.Model):
-    __tablename__ = 'sequence'
+class Jobs(db.Model):
+    __tablename__ = 'jobs'
     id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), unique=True, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     jobrole = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
-    steps = db.relationship('SequenceStep', backref='sequence', lazy=True, cascade="all, delete-orphan", order_by="SequenceStep.step_number")
+    sections = db.relationship('JobSections', backref='jobs', lazy=True, cascade="all, delete-orphan", order_by="job_sections.section_number")
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
-        return f'<Sequence {self.name or self.jobrole}>'
+        return f'<Jobs {self.id or self.jobrole}>'
 
-class SequenceStep(db.Model):
-    __tablename__ = 'sequence_step'
+class JobSections(db.Model):
+    __tablename__ = 'job_sections'
     id = db.Column(db.Integer, primary_key=True)
-    sequence_id = db.Column(db.Integer, db.ForeignKey('sequence.id'), nullable=False)
-    step_number = db.Column(db.Integer, nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'), nullable=False)
+    section_number = db.Column(db.Integer, nullable=False)
     heading = db.Column(db.String(255), nullable=True)
     body = db.Column(db.Text, nullable=False)
 
     def __repr__(self):
-        return f'<SequenceStep {self.step_number} for Sequence {self.sequence_id}>'
-
-class UserPreference(db.Model):
-    __tablename__ = 'user_preference'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    key = db.Column(db.String(100), nullable=False)
-    value = db.Column(db.Text, nullable=False)
-
-    __table_args__ = (db.UniqueConstraint('user_id', 'key', name='_user_key_uc'),)
-
-    def __repr__(self):
-        return f'<UserPreference {self.key} for User {self.user_id}>'
+        return f'<JobSections {self.section_number} for Jobs {self.job_id}>'

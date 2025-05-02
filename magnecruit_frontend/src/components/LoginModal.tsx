@@ -1,15 +1,10 @@
 import React, { useState } from 'react';
-
-interface User {
-  id: number;
-  username: string | null;
-  email: string;
-}
+import { Users } from '../lib/types'
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: User) => void;
+  onLoginSuccess: (user: Users) => void;
 }
 
 const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_BASE_URL || 'http://localhost:5000';
@@ -20,6 +15,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Handlers for the Login Submit Button
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -38,7 +34,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
       const data = await response.json();
 
       if (response.ok) {
-        onLoginSuccess(data as User);
+        onLoginSuccess(data as Users);
       } else {
         setError(data.error || 'Login failed. Please check your credentials.');
       }
@@ -57,8 +53,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
       <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        
+        {/* Login Modal Header */}
         <div className="mt-3 text-center">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Log In</h3>
+          
+          {/* Login Modal Form */}
           <form onSubmit={handleSubmit} className="mt-2 px-7 py-3 space-y-4">
             <input
               type="email"
@@ -68,6 +68,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
+
             <input
               type="password"
               placeholder="Password (magnecpwd)"
@@ -76,7 +77,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
-             {error && <p className="text-red-500 text-xs italic">{error}</p>}
+
+            {error && <p className="text-red-500 text-xs italic">{error}</p>}
+
+            {/* Login Submit Button */}
             <div className="pt-3">
               <button
                 type="submit"
@@ -87,6 +91,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
               </button>
             </div>
           </form>
+
+          {/* Login Modal Cancel Button */}
           <div className="mt-2 px-7 pb-3">
              <button
                 onClick={onClose}
@@ -95,6 +101,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
                 Cancel
              </button>
            </div>
+
         </div>
       </div>
     </div>

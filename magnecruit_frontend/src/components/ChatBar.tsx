@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { SendHorizontal } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
+import ReactMarkdown from "react-markdown";
 
 interface ChatBarProps {
     isLoading: boolean;
@@ -14,37 +14,45 @@ interface ChatBarProps {
 const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
     const conversationId = useSelector((state: RootState) => state.chat.selectedConversationId);
     const messages = useSelector((state: RootState) => state.chat.messages);
-
-    const [inputText, setInputText] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [inputText, setInputText] = useState("");
 
+    // Effect to scroll to the bottom of the messages list
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    // Handlers for the Input Text Area
     const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInputText(event.target.value);
     };
 
-    const handleSendClick = () => {
+    // Handlers for the Send Click Button
+    const handleSendClickButton = () => {    
         if (inputText.trim()) {
             onSendMessage(inputText);
             setInputText("");
         }
     };
 
+    // Handlers for the Enter Key Press Event
     const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
-            handleSendClick();
+            handleSendClickButton();
         }
     };
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
-
     return (
         <div className="bg-white rounded-xl shadow-md h-full flex flex-col">
+
+            {/* Chat Bar Header */}
             <div className="flex-shrink-0 p-4 border-b border-gray-200">
                 <h2 className="text-lg font-semibold mb-1 text-gray-700">MagnecAI Chat</h2>
             </div>
+
+
+            {/* Chat Bar Body */}
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
                 {isLoading ? (
                     <p className="text-center text-gray-500">Loading messages...</p>
@@ -70,8 +78,8 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
                                             : "bg-gray-200 text-gray-800"
                                     }`}
                                 >
-                                    <ReactMarkdown>{message.content}</ReactMarkdown>
-                                </div>
+                                <ReactMarkdown>{message.content}</ReactMarkdown>
+                            </div>
                             </div>
                         ))}
                         <div ref={messagesEndRef} />
@@ -79,8 +87,11 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
                 )}
             </div>
 
+            {/* Chat Bar Footer */}
             <div className="flex-shrink-0 p-4 border-t border-gray-200">
                 <div className="flex items-center space-x-2">
+
+                    {/* Input Text Area */}
                     <textarea
                         placeholder="Type your message..."
                         className="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[2.5rem] max-h-24 overflow-y-auto resize-none disabled:opacity-50"
@@ -88,16 +99,18 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
                         onChange={handleInputChange}
                         onKeyDown={handleKeyPress}
                         rows={3}
-                        disabled={conversationId === null || isLoading}
                     />
+                    
+                    {/* Send Message Button */}
                     <button
-                        onClick={handleSendClick}
+                        onClick={handleSendClickButton}
                         className="p-2 text-blue-500 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:hover:bg-transparent"
                         aria-label="Send message"
                         disabled={!inputText.trim() || conversationId === null || isLoading}
                     >
                         <SendHorizontal size={20} />
                     </button>
+
                 </div>
             </div>
         </div>

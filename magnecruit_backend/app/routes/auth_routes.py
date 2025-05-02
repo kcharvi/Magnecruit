@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify, session
 from .. import db
-from ..models import User
+from ..models import Users
 
 auth_bp = Blueprint('auth_bp', __name__, url_prefix='/api/auth')
 
+# TODO: Remove test user credentials before going live
 TEST_USER_EMAIL = 'magnec@example.com'
 TEST_USER_PASSWORD = 'magnecpwd' 
 
@@ -17,7 +18,7 @@ def login():
         return jsonify({"error": "Email and password are required"}), 400
 
     if email == TEST_USER_EMAIL and password == TEST_USER_PASSWORD:
-        user = db.session.query(User).filter_by(email=email).first()
+        user = db.session.query(Users).filter_by(email=email).first()
         if user:
             session['user_id'] = user.id
             session['username'] = user.username
@@ -29,10 +30,8 @@ def login():
                 "email": user.email
             }), 200
         else:
-            print(f"Login failed: Test credentials matched, but user {email} not found in DB.")
             return jsonify({"error": "User not found in database despite matching test credentials"}), 500
     else:
-        print(f"Login failed for email: {email}")
         return jsonify({"error": "Invalid email or password"}), 401
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -49,9 +48,8 @@ def logout():
 def check_session():
     user_id = session.get('user_id')
     if user_id:
-        user = db.session.query(User).get(user_id)
+        user = db.session.query(Users).get(user_id)
         if user:
-            print(f"Active session found for user {user_id} ({session.get('email')})")
             return jsonify({
                 "isLoggedIn": True,
                 "user": {
@@ -61,8 +59,6 @@ def check_session():
                 }
             }), 200
         else:
-            print(f"Session user ID {user_id} not found in DB. Clearing stale session.")
             session.clear()
     
-    print("No active session found.")
     return jsonify({"isLoggedIn": False, "user": None}), 200 
