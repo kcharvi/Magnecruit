@@ -6,11 +6,13 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import ReactMarkdown from "react-markdown";
 
+// Interface for the Chat bar props
 interface ChatBarProps {
     isLoading: boolean;
     onSendMessage: (content: string) => void;
 }
 
+// Chat bar component
 const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
     const conversationId = useSelector((state: RootState) => state.chat.selectedConversationId);
     const messages = useSelector((state: RootState) => state.chat.messages);
@@ -28,7 +30,7 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
     };
 
     // Handlers for the Send Click Button
-    const handleSendClickButton = () => {    
+    const handleSendClickButton = () => {
         if (inputText.trim()) {
             onSendMessage(inputText);
             setInputText("");
@@ -45,12 +47,10 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
 
     return (
         <div className="bg-white rounded-xl shadow-md h-full flex flex-col">
-
             {/* Chat Bar Header */}
             <div className="flex-shrink-0 p-4 border-b border-gray-200">
                 <h2 className="text-lg font-semibold mb-1 text-gray-700">MagnecAI Chat</h2>
             </div>
-
 
             {/* Chat Bar Body */}
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
@@ -78,8 +78,8 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
                                             : "bg-gray-200 text-gray-800"
                                     }`}
                                 >
-                                <ReactMarkdown>{message.content}</ReactMarkdown>
-                            </div>
+                                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                                </div>
                             </div>
                         ))}
                         <div ref={messagesEndRef} />
@@ -90,7 +90,6 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
             {/* Chat Bar Footer */}
             <div className="flex-shrink-0 p-4 border-t border-gray-200">
                 <div className="flex items-center space-x-2">
-
                     {/* Input Text Area */}
                     <textarea
                         placeholder="Type your message..."
@@ -100,7 +99,7 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
                         onKeyDown={handleKeyPress}
                         rows={3}
                     />
-                    
+
                     {/* Send Message Button */}
                     <button
                         onClick={handleSendClickButton}
@@ -110,7 +109,6 @@ const ChatBar: React.FC<ChatBarProps> = ({ isLoading, onSendMessage }) => {
                     >
                         <SendHorizontal size={20} />
                     </button>
-
                 </div>
             </div>
         </div>

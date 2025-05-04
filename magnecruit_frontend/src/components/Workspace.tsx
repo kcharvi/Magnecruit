@@ -1,7 +1,7 @@
 // magnecruit_frontend\src\components\Workspace.tsx
 
 import React, { useState, useEffect, useRef } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
     SquareStack,
     CalendarClock,
@@ -11,17 +11,22 @@ import {
     MessageSquareShare,
     Grip,
 } from "lucide-react";
+import { Jobs } from "../lib/types";
+import { AppDispatch, RootState } from "../store/store";
+import {
+    WorkspaceView as WorkspaceViewType,
+    setActiveView as setReduxActiveView,
+} from "../store/workspaceSlice";
 
 import ActionGridView from "./ActionGridView";
-import SequenceCuratorView from "./ActionGridComponents/JobSequenceWriterView";
+import JobSectionWriterView from "./ActionGridComponents/JobSectionsCuratorView";
 import LinkedInPostCreatorView from "./ActionGridComponents/LinkedInPostCreatorView";
 import InterviewSchedulerView from "./ActionGridComponents/InterviewSchedulerView";
 import CandidateManagerView from "./ActionGridComponents/CandidateManagerView";
 import FollowUpReminderView from "./ActionGridComponents/FollowUpReminderView";
 import ExpenseSubmitterView from "./ActionGridComponents/ExpenseSubmitterView";
-import { SequenceData } from "../lib/types";
-import { RootState } from "../store/store";
 
+// Interface for the action items
 interface ActionItem {
     id: string;
     title: string;
@@ -31,9 +36,10 @@ interface ActionItem {
     iconColor: string;
 }
 
+// Actions for the workspace
 const actions: ActionItem[] = [
     {
-        id: "job-sequence",
+        id: "job-sections",
         title: "Job Description Writer",
         description: "Draft your job description and publish on multiple sites with one-click.",
         icon: SquareStack,
@@ -82,71 +88,50 @@ const actions: ActionItem[] = [
     },
 ];
 
-type WorkspaceView =
-    | "actions"
-    | "job-sequence"
-    | "linkedin-post-creation"
-    | "interview-scheduling"
-    | "candidate-management"
-    | "follow-up"
-    | "submit-expense";
-
+// Workspace component
 const Workspace: React.FC = () => {
+    const dispatch = useDispatch<AppDispatch>();
     const selectedConversationId = useSelector(
         (state: RootState) => state.chat.selectedConversationId
     );
-
-    const aiGeneratedSequence = useSelector(
-        (state: RootState) => state.workspace.aiGeneratedSequence
+    const currentJob = useSelector((state: RootState) => state.workspace.aiGeneratedJob);
+    const jobSectionsCuratorRef = useRef<{ updateJobs: (data: Partial<Jobs>) => void } | null>(
+        null
     );
+    const [activeView, setActiveView] = useState<WorkspaceViewType>("actions");
 
-    const [activeView, setActiveView] = useState<WorkspaceView>("actions");
-    const [currentSequence, setCurrentSequence] = useState<SequenceData | null>(null);
-    const sequenceCuratorRef = useRef<{
-        updateSequence: (data: Partial<SequenceData>) => void;
-    } | null>(null);
+    // Effect to update the Job Section Writer View via ref
+    useEffect(() => {
+        if (currentJob && currentJob.conversation_id === selectedConversationId) {
+            if (jobSectionsCuratorRef.current && activeView === "job-sections") {
+                if (currentJob) {
+                    jobSectionsCuratorRef.current.updateJobs(currentJob);
+                }
+            }
+        }
+    }, [currentJob, selectedConversationId, activeView]);
 
+    // Handler for the action click
     const handleActionClick = (actionId: string) => {
-        console.log(`Action clicked: ${actionId}`);
-        setActiveView(actionId as WorkspaceView);
+        const newView = actionId as WorkspaceViewType;
+        setActiveView(newView);
+        dispatch(setReduxActiveView(newView));
     };
 
+    // Handler for the back click
     const handleBackClick = () => {
         setActiveView("actions");
+        dispatch(setReduxActiveView("actions"));
     };
 
-    useEffect(() => {
-        if (aiGeneratedSequence && aiGeneratedSequence.conversation_id === selectedConversationId) {
-            console.log(
-                "Workspace: Detected relevant AI sequence data from Redux for convo:",
-                selectedConversationId,
-                aiGeneratedSequence
-            );
-            setCurrentSequence(aiGeneratedSequence);
-
-            if (sequenceCuratorRef.current && activeView === "job-sequence") {
-                console.log("Workspace: Updating SequenceCuratorView via ref");
-                sequenceCuratorRef.current.updateSequence(aiGeneratedSequence);
-            } else {
-                console.log(
-                    `Workspace: SequenceCuratorView ref not available or view is not active ('${activeView}').`
-                );
-            }
-        } else if (currentSequence && currentSequence.conversation_id !== selectedConversationId) {
-            console.log(
-                `Workspace: Conversation changed (from ${currentSequence.conversation_id} to ${selectedConversationId}). Clearing local sequence state.`
-            );
-            setCurrentSequence(null);
-        }
-    }, [aiGeneratedSequence, selectedConversationId, activeView, currentSequence]);
-
+    // Render the current view
     const renderCurrentView = () => {
         switch (activeView) {
-            case "job-sequence":
+            case "job-sections":
                 return (
-                    <SequenceCuratorView
-                        userId={currentSequence?.user_id || undefined}
-                        onRef={(ref) => (sequenceCuratorRef.current = ref)}
+                    <JobSectionWriterView
+                        userId={currentJob?.user_id || undefined}
+                        onRef={(ref) => (jobSectionsCuratorRef.current = ref)}
                     />
                 );
             case "linkedin-post-creation":
@@ -167,6 +152,7 @@ const Workspace: React.FC = () => {
 
     return (
         <div className="bg-white rounded-xl shadow-md h-full flex flex-col overflow-hidden">
+            {/* Workspace Header */}
             <div className="flex-shrink-0 p-4 border-b border-gray-200 flex justify-between items-center">
                 <h2 className="text-lg font-semibold mb-1 text-gray-700">
                     {activeView === "actions"

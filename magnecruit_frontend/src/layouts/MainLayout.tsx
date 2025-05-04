@@ -4,6 +4,7 @@ import React, { ReactNode } from "react";
 import { Conversations, Users } from "../lib/types";
 import Sidebar from "../components/SideBar";
 
+// Interface for the Main Layout props
 interface MainLayoutProps {
     chatPanel: ReactNode;
     workspacePanel: ReactNode;
@@ -16,6 +17,7 @@ interface MainLayoutProps {
     onLogoutClick: () => void;
 }
 
+// Main Layout component
 const MainLayout: React.FC<MainLayoutProps> = ({
     chatPanel,
     workspacePanel,
@@ -29,6 +31,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
     return (
         <div className="h-screen flex flex-row bg-gray-100 overflow-hidden">
+            {/* Sidebar */}
             <div className="w-64 flex-shrink-0 h-full">
                 <Sidebar
                     conversations={conversations}
@@ -41,6 +44,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 />
             </div>
 
+            {/* Main Content */}
             <main className="flex-grow flex flex-row gap-4 p-4 overflow-hidden">
                 <div className="w-[45%] flex-shrink-0 h-full">{chatPanel}</div>
                 <div className="flex-grow h-full">{workspacePanel}</div>

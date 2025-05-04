@@ -14,6 +14,7 @@ import {
 import { Conversations, Users } from "../lib/types";
 import Avatar from "./Avatar";
 
+// Interface for the sidebar props
 interface SidebarProps {
     conversations: Conversations[];
     selectedConversationId: number | null;
@@ -24,6 +25,7 @@ interface SidebarProps {
     onLogoutClick: () => void;
 }
 
+// Interface for the navigation item
 interface NavItem {
     name: string;
     href: string;
@@ -33,6 +35,7 @@ interface NavItem {
     active: boolean;
 }
 
+// Sidebar component
 const Sidebar: React.FC<SidebarProps> = ({
     conversations,
     selectedConversationId,
@@ -43,6 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onLogoutClick,
 }) => {
 
+    // Navigation items
     const navigation: NavItem[] = [
         { name: "Home", href: "#", icon: Home, active: true },
         { name: "Meetings", href: "#", icon: CalendarDays, active: false },

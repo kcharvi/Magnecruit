@@ -1,13 +1,17 @@
 # magnecruit_backend\app\routes\chat_routes.py
 
-from flask import Blueprint, jsonify, session
 from .. import db
 from ..models import Conversations
+from flask import Blueprint, jsonify, session
 
 chat_bp = Blueprint('chat_bp', __name__, url_prefix='/api/chat')
 
+# Route to get all conversations for the user
 @chat_bp.route('/conversations', methods=['GET'])
 def get_conversations():
+    '''
+    Returns all the conversations for the user to display in the sidebar history
+    '''
     user_id = session.get('user_id') 
     if not user_id:
          return jsonify({"error": "Authentication required to fetch conversations"}), 401

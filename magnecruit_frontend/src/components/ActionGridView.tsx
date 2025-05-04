@@ -3,6 +3,7 @@
 import React from "react";
 import { ArrowUpRight } from "lucide-react";
 
+// Interface for the action item
 interface ActionItem {
     id: string;
     title: string;
@@ -12,14 +13,17 @@ interface ActionItem {
     iconColor: string;
 }
 
+// Interface for the action grid view props
 interface ActionGridViewProps {
     actions: ActionItem[];
     onActionClick: (actionId: string) => void;
 }
 
+// Action grid view component
 const ActionGridView: React.FC<ActionGridViewProps> = ({ actions, onActionClick }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+            {/* Map through the action items and render the action item */}
             {actions.map((action) => {
                 const IconComponent = action.icon;
                 return (

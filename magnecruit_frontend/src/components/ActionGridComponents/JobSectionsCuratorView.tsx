@@ -1,49 +1,49 @@
-// magnecruit_frontend\src\components\ActionGridComponents\SequenceCuratorView.tsx
+// magnecruit_frontend\src\components\ActionGridComponents\JobSectionsCuratorView.tsx
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Save, Trash2 } from "lucide-react";
 import axios, { AxiosError } from "axios";
-import { SequenceData, SequenceStepData } from "../../lib/types";
+import { Plus, Save, Trash2 } from "lucide-react";
+import { Jobs, JobSections } from "../../lib/types";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
-interface SequenceStepInputData {
-    step_number: number;
+// Interface for the job sections input data
+interface JobSectionsInputData{
+    section_number: number;
     heading: string;
     body: string;
 }
 
-interface SequenceCuratorViewProps {
+// Interface for the job sections curator view props
+interface JobSectionsCuratorViewProps {
     userId?: number;
-    onRef?: (ref: { updateSequence: (data: Partial<SequenceData>) => void }) => void;
+    onRef?: (ref: { updateJobs: (data: Partial<Jobs>) => void }) => void;
 }
 
-const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef }) => {
-    const selectedConversationId = useSelector(
-        (state: RootState) => state.chat.selectedConversationId
-    );
-
-    const [sequence, setSequence] = useState<SequenceData>({
+// Job sections curator view component
+const JobSectionsCuratorView: React.FC<JobSectionsCuratorViewProps> = ({ userId, onRef }) => {
+    const selectedConversationId = useSelector((state: RootState) => state.chat.selectedConversationId);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>("");
+    const [success, setSuccess] = useState<string>("");
+    const [jobs, setJobs] = useState<Jobs>({
         jobrole: "",
         description: "",
-        steps: [
+        sections: [
             {
                 id: Date.now(),
-                step_number: 1,
+                section_number: 1,
                 heading: "About the Company",
                 body: "Enter company information here...",
             },
         ],
     });
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string>("");
-    const [success, setSuccess] = useState<string>("");
 
-    const updateSequence = useCallback((data: Partial<SequenceData>) => {
-        console.log("SequenceCuratorView: updateSequence called with:", data);
-        setSequence((prevState) => {
+    // Update the jobs state
+    const updateJobs = useCallback((data: Partial<Jobs>) => {
+        setJobs((prevState) => {
             const newState = { ...prevState, ...data };
             if (data.jobrole) {
                 newState.jobrole = data.jobrole;
@@ -51,8 +51,8 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
             if (data.description) {
                 newState.description = data.description;
             }
-            if (data.steps) {
-                newState.steps = data.steps;
+            if (data.sections) {
+                newState.sections = data.sections;
             }
             return newState;
         });
@@ -60,66 +60,55 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
         setTimeout(() => setSuccess(""), 5000);
     }, []);
 
-    useEffect(() => {
-        if (onRef) {
-            onRef({ updateSequence });
-        }
-    }, [onRef, updateSequence]);
-
-    const fetchSequence = useCallback(
+    // Fetch the jobs from the database
+    const fetchJobs = useCallback(
         async (convId: number) => {
             try {
                 setLoading(true);
                 setError("");
-                console.log(`SequenceCuratorView: Fetching sequence for conversation ${convId}`);
-                const response = await axios.get<SequenceData>(
-                    `${API_BASE_URL}/job-sequence/get/${convId}`
+                const response = await axios.get<Jobs>(
+                    `${API_BASE_URL}/job-sections/get/${convId}`
                 );
                 const fetchedData = response.data;
-                console.log("SequenceCuratorView: Sequence data fetched successfully", fetchedData);
-                fetchedData.steps =
-                    fetchedData.steps?.sort((a, b) => a.step_number - b.step_number) || [];
+                fetchedData.sections = fetchedData.sections?.sort((a, b) => a.section_number - b.section_number) || [];
                 fetchedData.jobrole = fetchedData.jobrole || "";
                 fetchedData.description = fetchedData.description || "";
-                setSequence(fetchedData);
+                setJobs(fetchedData);
             } catch (err) {
                 if (axios.isAxiosError(err) && err.response?.status === 404) {
-                    console.log(
-                        `SequenceCuratorView: No existing sequence found for conversation ${convId} (404). Setting initial state.`
-                    );
-                    setSequence({
+                    setJobs({
                         conversation_id: convId,
                         user_id: userId,
                         jobrole: "",
                         description: "",
-                        steps: [
+                        sections: [
                             {
                                 id: Date.now(),
-                                step_number: 1,
+                                section_number: 1,
                                 heading: "About the Company / Role",
                                 body: "",
                             },
                             {
                                 id: Date.now() + 1,
-                                step_number: 2,
+                                section_number: 2,
                                 heading: "Responsibilities",
                                 body: "",
                             },
                             {
                                 id: Date.now() + 2,
-                                step_number: 3,
+                                section_number: 3,
                                 heading: "Required Qualifications",
                                 body: "",
                             },
                             {
                                 id: Date.now() + 3,
-                                step_number: 4,
+                                section_number: 4,
                                 heading: "Benefits / Offer Details",
                                 body: "",
                             },
                             {
                                 id: Date.now() + 4,
-                                step_number: 5,
+                                section_number: 5,
                                 heading: "Additional Information",
                                 body: "",
                             },
@@ -127,17 +116,16 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
                     });
                     setError("");
                 } else {
-                    console.error("SequenceCuratorView: Error fetching sequence:", err);
                     setError("Failed to load job description data. Please try refreshing.");
-                    setSequence({
+                    setJobs({
                         conversation_id: convId,
                         user_id: userId,
                         jobrole: "",
                         description: "",
-                        steps: [
+                        sections: [
                             {
                                 id: Date.now(),
-                                step_number: 1,
+                                section_number: 1,
                                 heading: "Error Loading Data",
                                 body: "Could not load existing data.",
                             },
@@ -151,21 +139,26 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
         [userId]
     );
 
+    // Effect to update the jobs state
+    useEffect(() => {
+        if (onRef) {
+            onRef({ updateJobs });
+        }
+    }, [onRef, updateJobs]);
+
+    // Effect to fetch the jobs from the database
     useEffect(() => {
         if (selectedConversationId) {
-            fetchSequence(selectedConversationId);
+            fetchJobs(selectedConversationId);
         } else {
-            console.log(
-                "SequenceCuratorView: No conversation selected (from Redux). Resetting state."
-            );
-            setSequence({
+            setJobs({
                 jobrole: "",
                 description: "",
-                steps: [
+                sections: [
                     {
                         id: Date.now(),
-                        step_number: 1,
-                        heading: "About the Company / Role",
+                        section_number: 1,
+                        heading: "Section 1",
                         body: "",
                     },
                 ],
@@ -173,140 +166,139 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
             setLoading(false);
             setError("");
         }
-    }, [selectedConversationId, fetchSequence]);
+    }, [selectedConversationId, fetchJobs]);
 
+    // Handle the job role change
     const handleJobroleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSequence((prevState) => ({
+        setJobs((prevState) => ({
             ...prevState,
             jobrole: e.target.value,
         }));
     };
 
+    // Handle the job description change
     const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setSequence((prevState) => ({
+        setJobs((prevState) => ({
             ...prevState,
             description: e.target.value,
         }));
     };
 
-    const handleStepHeadingChange = (index: number, value: string) => {
-        const updatedSteps = [...sequence.steps];
-        updatedSteps[index] = {
-            ...updatedSteps[index],
+    // Handle the job section heading change
+    const handleJobSectionHeadingChange = (index: number, value: string) => {
+        const updatedSection = [...jobs.sections];
+        updatedSection[index] = {
+            ...updatedSection[index],
             heading: value,
         };
-        setSequence((prevState) => ({
+        setJobs((prevState) => ({
             ...prevState,
-            steps: updatedSteps,
+            sections: updatedSection,
         }));
     };
 
-    const handleStepBodyChange = (index: number, value: string) => {
-        const updatedSteps = [...sequence.steps];
-        updatedSteps[index] = {
-            ...updatedSteps[index],
+    // Handle the job section body change
+    const handleJobSectionBodyChange = (index: number, value: string) => {
+        const updatedJobSections = [...jobs.sections];
+        updatedJobSections[index] = {
+            ...updatedJobSections[index],
             body: value,
         };
-        setSequence((prevState) => ({
+        setJobs((prevState) => ({
             ...prevState,
-            steps: updatedSteps,
+            sections: updatedJobSections,
         }));
     };
 
-    const addStep = () => {
-        const newStep: SequenceStepData = {
+    // Add a new job section
+    const onAddJobSection = () => {
+        const newJobSection: JobSections = {
             id: Date.now(),
-            step_number: sequence.steps.length + 1,
-            heading: `Step ${sequence.steps.length + 1}`,
+            section_number: jobs.sections.length + 1,
+            heading: `Section ${jobs.sections.length + 1}`,
             body: "Enter content here...",
         };
-
-        setSequence((prevState) => ({
+        setJobs((prevState) => ({
             ...prevState,
-            steps: [...prevState.steps, newStep],
+            sections: [...prevState.sections, newJobSection],
         }));
     };
 
-    const removeStep = (index: number) => {
-        if (sequence.steps.length <= 1) {
-            setError("You need at least one step in the sequence.");
+    // Remove a job section
+    const onRemoveJobSection = (index: number) => {
+        if (jobs.sections.length <= 1) {
+            setError("You need at least one section in the job description.");
             setTimeout(() => setError(""), 5000);
             return;
         }
-
-        const updatedSteps = sequence.steps.filter((_, i) => i !== index);
-        updatedSteps.forEach((step, i) => {
-            step.step_number = i + 1;
-        });
-
-        setSequence((prevState) => ({
+        const sectionsAfterRemoval = jobs.sections.filter((_, i) => i !== index);
+        const updatedSectionsWithNumbers  = sectionsAfterRemoval.map((section, i) => {
+            return {
+                ...section,
+                section_number: i + 1,
+            }
+        })
+        setJobs((prevState) => ({
             ...prevState,
-            steps: updatedSteps,
+            sections: updatedSectionsWithNumbers,
         }));
     };
 
-    const saveSequence = async () => {
-        if (!sequence.jobrole.trim()) {
+    // Save the jobs
+    const onSaveJobs = async () => {
+        if (!jobs.jobrole.trim()) {
             setError("Job title is required");
             setTimeout(() => setError(""), 5000);
             return;
         }
-
         const currentConvId = selectedConversationId;
-
         if (!currentConvId) {
             setError("Cannot save: No active conversation selected.");
             setTimeout(() => setError(""), 5000);
             return;
         }
-
         setLoading(true);
         setError("");
         setSuccess("");
-
         try {
-            const stepsInput: SequenceStepInputData[] = sequence.steps.map((step) => ({
-                step_number: step.step_number,
-                heading: step.heading,
-                body: step.body,
+            const jobSectionsInput: JobSectionsInputData[] = jobs.sections.map((section) => ({
+                section_number: section.section_number,
+                heading: section.heading,
+                body: section.body,
             }));
 
             const dataToSend = {
-                id: sequence.id,
+                id: jobs.id,
                 conversation_id: currentConvId,
-                user_id: userId || sequence.user_id,
-                jobrole: sequence.jobrole,
-                description: sequence.description,
-                steps: stepsInput,
+                user_id: userId || jobs.user_id,
+                jobrole: jobs.jobrole,
+                description: jobs.description,
+                sections: jobSectionsInput,
             };
-
             if (!dataToSend.user_id) {
                 console.warn(
-                    "SequenceCuratorView: User ID is missing when trying to save. Ensure userId prop is passed or retrieved."
+                    "JobSectionsCuratorView: User ID is missing when trying to save. Ensure userId prop is passed or retrieved."
                 );
             }
-
-            console.log("Saving sequence data:", dataToSend);
             const response = await axios.post<{
                 id: number;
-                steps?: SequenceStepData[];
+                sections?: JobSections[];
                 message?: string;
-            }>(`${API_BASE_URL}/job-sequence/save`, dataToSend);
-            console.log("Sequence saved response:", response.data);
+            }>(`${API_BASE_URL}/job-sections/save`, dataToSend);
 
             if (response.data.id) {
-                if (response.data.steps && Array.isArray(response.data.steps)) {
-                    setSequence((prev) => ({
+                if (response.data.sections && Array.isArray(response.data.sections)) {
+                    setJobs((prev) => ({
                         ...prev,
                         id: response.data.id,
                         conversation_id: currentConvId,
-                        steps: response.data.steps!.map((s) => ({
+                        sections: response.data.sections!.map((s) => ({
                             ...s,
                             heading: s.heading || "",
                         })),
                     }));
                 } else {
-                    setSequence((prevState) => ({
+                    setJobs((prevState) => ({
                         ...prevState,
                         id: response.data.id,
                         conversation_id: currentConvId,
@@ -317,7 +309,6 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
             setSuccess(response.data.message || "Job description saved successfully!");
             setTimeout(() => setSuccess(""), 5000);
         } catch (err: unknown) {
-            console.error("Error saving sequence:", err);
             let errorMsg = "Failed to save job description. Please try again.";
             if (axios.isAxiosError(err)) {
                 const axiosError = err as AxiosError<{ error?: string }>;
@@ -334,72 +325,73 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
 
     return (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full min-h-[400px]">
+
             {/* Header: Job Title and Description */}
             <div className="p-4 border-b border-gray-200">
                 <input
                     type="text"
                     placeholder="Job Title"
-                    value={sequence.jobrole || ""}
+                    value={jobs.jobrole || ""}
                     onChange={handleJobroleChange}
                     className="text-lg font-semibold w-full border-none focus:ring-0 p-0 mb-2 outline-none"
                 />
                 <textarea
                     placeholder="Write a job description..."
-                    value={sequence.description}
+                    value={jobs.description}
                     onChange={handleDescriptionChange}
                     className="text-sm text-gray-600 w-full border border-gray-200 rounded-md p-2 resize-none outline-none focus:ring-1 focus:ring-indigo-500 min-h-[60px]"
-                    rows={3}
+                    rows={2}
                 />
             </div>
 
-            {/* Steps Area */}
+            {/* Sections Area */}
             <div className="flex-grow p-4 overflow-y-auto space-y-4">
                 <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-sm font-medium text-gray-700">Sequence Steps:</h4>
+                    <h4 className="text-sm font-medium text-gray-700">Job Sections:</h4>
                     <button
-                        onClick={addStep}
+                        onClick={onAddJobSection}
                         className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100 flex items-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                        <Plus size={14} className="mr-1" /> Add Step
+                        <Plus size={12} className="mr-1" /> Add Section
                     </button>
                 </div>
 
-                {/* Steps List */}
-                {sequence.steps.length > 0 ? (
+                {/* Sections List */}
+                {jobs.sections.length > 0 ? (
                     <div className="space-y-3">
-                        {sequence.steps.map((step, index) => (
+                        {jobs.sections.map((section, index) => (
                             <div
-                                key={step.id || index}
+                                key={section.id || index}
                                 className="p-3 border rounded-md bg-gray-50"
                             >
                                 <div className="flex justify-between items-center mb-2">
                                     <div className="flex items-center flex-grow mr-2">
                                         <span className="text-xs font-semibold bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full mr-2 whitespace-nowrap">
-                                            Step {step.step_number}
+                                            Section {section.section_number}
                                         </span>
                                         <input
                                             type="text"
-                                            placeholder="Step Heading"
-                                            value={step.heading}
+                                            placeholder="Section Heading"
+                                            value={section.heading}
                                             onChange={(e) =>
-                                                handleStepHeadingChange(index, e.target.value)
+                                                handleJobSectionHeadingChange(index, e.target.value)
                                             }
                                             className="text-sm font-medium text-gray-700 border-none bg-transparent focus:ring-0 p-0 outline-none w-full"
                                         />
                                     </div>
                                     <button
-                                        onClick={() => removeStep(index)}
+                                        onClick={() => onRemoveJobSection(index)}
                                         className="text-gray-400 hover:text-red-500 flex-shrink-0"
-                                        title="Remove step"
+                                        title="Remove Section"
                                     >
                                         <Trash2 size={14} />
                                     </button>
                                 </div>
                                 <textarea
-                                    value={step.body}
-                                    onChange={(e) => handleStepBodyChange(index, e.target.value)}
+                                    value={section.body}
+                                    onChange={(e) => handleJobSectionBodyChange(index, e.target.value)}
                                     className="w-full text-sm text-gray-600 border border-gray-200 rounded-md p-2 min-h-[80px] focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    placeholder="Enter content for this step..."
+                                    placeholder="Enter content for this section..."
                                     rows={3}
                                 />
                             </div>
@@ -407,7 +399,7 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
                     </div>
                 ) : (
                     <p className="text-gray-400 italic text-sm text-center py-8">
-                        No sequence steps yet. Add steps to build your job description.
+                        No job sections yet. Add sections to build your job description.
                     </p>
                 )}
             </div>
@@ -427,7 +419,7 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
             {/* Footer: Save Button */}
             <div className="p-4 border-t border-gray-200 flex justify-end">
                 <button
-                    onClick={saveSequence}
+                    onClick={onSaveJobs}
                     disabled={loading || !selectedConversationId}
                     className="text-sm px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center"
                 >
@@ -457,7 +449,7 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
                         </>
                     ) : (
                         <>
-                            <Save size={16} className="mr-1" /> Save Job Description
+                            <Save size={14} className="mr-1" /> Save Job Description
                         </>
                     )}
                 </button>
@@ -466,4 +458,4 @@ const SequenceCuratorView: React.FC<SequenceCuratorViewProps> = ({ userId, onRef
     );
 };
 
-export default SequenceCuratorView;
+export default JobSectionsCuratorView;

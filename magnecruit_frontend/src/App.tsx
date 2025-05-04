@@ -3,46 +3,74 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { socket } from "./socket";
+import { Conversations, Users, Messages, JobsUpdatePayload } from "./lib/types";
+import { AppDispatch, RootState } from "./store/store";
+import { setAiGeneratedJobSections, clearUpdatedFieldHighlights } from "./store/workspaceSlice";
+import {
+    setMessages,
+    addMessages,
+    clearMessages,
+    setSelectedConversation,
+} from "./store/chatSlice";
 import MainLayout from "./layouts/MainLayout";
 import Chatbar from "./components/ChatBar";
 import Workspace from "./components/Workspace";
 import LoginModal from "./components/LoginModal";
-import { ConversationSummary, User, SequenceData, Message } from "./lib/types";
-import { AppDispatch, RootState } from "./store/store";
-import { setAiGeneratedSequence } from "./store/workspaceSlice";
-import { setMessages, addMessage, clearMessages, setSelectedConversation } from "./store/chatSlice";
 
 const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 
+// App component
 const App: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-
-    const selectedConversationId = useSelector(
-        (state: RootState) => state.chat.selectedConversationId
-    );
-
-    const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const activeWorkspaceView = useSelector((state: RootState) => state.workspace.activeView);
+    const { selectedConversationId } = useSelector((state: RootState) => state.chat);
+    const [conversations, setConversations] = useState<Conversations[]>([]);
+    const [currentUser, setCurrentUser] = useState<Users | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isLoadingSession, setIsLoadingSession] = useState(true);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
+    // Effect to check the user session from the backend routing and setting the current user
+    useEffect(() => {
+        const checkUserSession = async () => {
+            setIsLoadingSession(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/session`, {
+                    credentials: "include",
+                });
+                const data = await response.json();
+                if (response.ok && data.isLoggedIn) {
+                    setCurrentUser(data.user);
+                } else {
+                    setCurrentUser(null);
+                }
+            } catch (error) {
+                console.error("Error checking session:", error);
+                setCurrentUser(null);
+            } finally {
+                setIsLoadingSession(false);
+            }
+        };
+        checkUserSession();
+    }, []);
+
+
+
+    // Effect to fetch conversations from the backend routing for the current user
     useEffect(() => {
         const fetchConversations = async () => {
             if (!currentUser) {
                 setConversations([]);
                 return;
             }
-            console.log("Fetching conversations for user:", currentUser.id);
             try {
                 const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
                     credentials: "include",
                 });
                 if (response.ok) {
-                    const data: ConversationSummary[] = await response.json();
+                    const data: Conversations[] = await response.json();
                     setConversations(data);
                 } else if (response.status === 401) {
-                    console.log("Unauthorized to fetch conversations, likely logged out.");
                     setCurrentUser(null);
                     setConversations([]);
                 } else {
@@ -62,99 +90,9 @@ const App: React.FC = () => {
         }
     }, [currentUser, isLoadingSession]);
 
-    useEffect(() => {
-        const checkUserSession = async () => {
-            console.log("Checking user session...");
-            setIsLoadingSession(true);
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/session`, {
-                    credentials: "include",
-                });
-                const data = await response.json();
-                if (response.ok && data.isLoggedIn) {
-                    console.log("Session check successful, user logged in:", data.user);
-                    setCurrentUser(data.user);
-                } else {
-                    console.log("Session check: No active session found.");
-                    setCurrentUser(null);
-                }
-            } catch (error) {
-                console.error("Error checking session:", error);
-                setCurrentUser(null);
-            } finally {
-                setIsLoadingSession(false);
-            }
-        };
-        checkUserSession();
-    }, []);
-
-    const handleConversationSelect = (id: number | null) => {
-        console.log("Conversation selected, dispatching to Redux:", id);
-        dispatch(setSelectedConversation(id));
-        setIsLoadingMessages(id !== null);
-    };
-
-    const handleNewChat = () => {
-        if (!currentUser) {
-            alert("Please log in to start a new chat.");
-            setIsLoginModalOpen(true);
-            return;
-        }
-        console.log("New chat requested, dispatching to Redux...");
-        dispatch(setSelectedConversation(null));
-        dispatch(clearMessages());
-        setIsLoadingMessages(false);
-        console.log("Frontend state reset for new chat visual. Ready for first message.");
-    };
-
-    const handleLoginClick = () => {
-        setIsLoginModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsLoginModalOpen(false);
-    };
-
-    const handleLoginSuccess = (user: User) => {
-        console.log("Login successful on frontend for:", user);
-        setCurrentUser(user);
-        setIsLoginModalOpen(false);
-        console.log("Login success: dispatching null conversation and clearing messages...");
-        dispatch(setSelectedConversation(null));
-        dispatch(clearMessages());
-    };
-
-    const handleLogoutClick = async () => {
-        console.log("Logging out...");
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
-                method: "POST",
-                credentials: "include",
-            });
-            if (response.ok) {
-                console.log("Logout successful on backend.");
-            } else {
-                console.error("Logout failed on backend, status:", response.status);
-            }
-        } catch (error) {
-            console.error("Error during logout fetch:", error);
-        }
-        setCurrentUser(null);
-        setConversations([]);
-        console.log("Logout: dispatching null conversation and clearing messages...");
-        dispatch(setSelectedConversation(null));
-        dispatch(clearMessages());
-        if (socket.connected) {
-            console.log("Disconnecting socket after logout.");
-            socket.disconnect();
-        }
-    };
-
+    // Effect to request messages for the selected conversation from the backend websocket and using Redux State Messages
     useEffect(() => {
         if (selectedConversationId !== null && socket.connected && currentUser) {
-            console.log(
-                `(App Effect) Requesting messages for conversation (from Redux state): ${selectedConversationId}`
-            );
             setIsLoadingMessages(true);
             socket.emit("request_conversation_messages", {
                 conversationId: selectedConversationId,
@@ -175,8 +113,8 @@ const App: React.FC = () => {
         }
     }, [selectedConversationId, currentUser, dispatch]);
 
+    // Effect to manage socket connection and events
     useEffect(() => {
-        console.log("Socket effect: Managing connection and events. Current user:", currentUser);
         console.log(
             "Socket effect: Current selectedConversationId (from Redux):",
             selectedConversationId
@@ -184,15 +122,6 @@ const App: React.FC = () => {
 
         function onConnect() {
             console.log("Socket connected:", socket.id);
-            if (selectedConversationId !== null) {
-                console.log(
-                    `(App Reconnect) Re-requesting messages for conversation: ${selectedConversationId}`
-                );
-                setIsLoadingMessages(true);
-                socket.emit("request_conversation_messages", {
-                    conversationId: selectedConversationId,
-                });
-            }
         }
 
         function onDisconnect(reason: string) {
@@ -211,9 +140,8 @@ const App: React.FC = () => {
         }
 
         function onConversationCreated(data: { conversationId: number; title: string | null }) {
-            console.log("App: Received conversation_created:", data);
             const newTitle = data.title || `Chat ${data.conversationId}`;
-            const newConversation: ConversationSummary = {
+            const newConversation: Conversations = {
                 id: data.conversationId,
                 title: newTitle,
                 created_at: new Date().toISOString(),
@@ -223,24 +151,23 @@ const App: React.FC = () => {
             setIsLoadingMessages(true);
         }
 
-        function handleSequenceUpdate(data: SequenceData) {
-            console.log("App: Received sequence_updated for convo:", data.conversation_id);
-            dispatch(setAiGeneratedSequence(data));
-            console.log("App: Dispatched sequence update to Redux store.");
-        }
-
-        function handleAiResponse(message: Message) {
-            console.log("App: Received ai_response:", message);
-            if (message.conversation_id === selectedConversationId) {
-                dispatch(addMessage(message));
+        function handleJobsUpdate(data: JobsUpdatePayload) {
+            if (data.conversation_id === selectedConversationId) {
+                dispatch(setAiGeneratedJobSections(data));
+                setTimeout(() => {
+                    dispatch(clearUpdatedFieldHighlights());
+                }, 3000);
             } else {
                 console.log(
-                    `App: Ignoring ai_response for conversation ${message.conversation_id} (current is ${selectedConversationId})`
+                    `App: Ignoring sections_updates for conversation ${data.conversation_id} (current is ${selectedConversationId})`
                 );
             }
         }
 
-        function handleConversationMessages(data: { conversationId: number; messages: Message[] }) {
+        function handleConversationMessages(data: {
+            conversationId: number;
+            messages: Messages[];
+        }) {
             if (data.conversationId === selectedConversationId) {
                 console.log(
                     "(App Handler) Received conversation messages, dispatching setMessages:",
@@ -255,17 +182,24 @@ const App: React.FC = () => {
             }
         }
 
+        function handleAiResponse(message: Messages) {
+            if (message.conversation_id === selectedConversationId) {
+                dispatch(addMessages(message));
+            } else {
+                console.log(
+                    `App: Ignoring ai_response for conversation ${message.conversation_id} (current is ${selectedConversationId})`
+                );
+            }
+        }
+
         if (currentUser && !socket.connected) {
-            console.log("Setting socket auth data for user:", currentUser.id);
             socket.auth = {
                 userId: currentUser.id,
                 username: currentUser.username,
                 email: currentUser.email,
             };
-            console.log("User logged in, connecting socket...");
             socket.connect();
         } else if (!currentUser && socket.connected) {
-            console.log("User logged out, clearing socket auth and disconnecting socket...");
             socket.auth = {};
             socket.disconnect();
         }
@@ -274,29 +208,93 @@ const App: React.FC = () => {
         socket.on("disconnect", onDisconnect);
         socket.on("connect_error", handleConnectError);
         socket.on("conversation_created", onConversationCreated);
-        socket.on("sequence_updated", handleSequenceUpdate);
+        socket.on("job_updated", handleJobsUpdate);
         socket.on("conversation_messages", handleConversationMessages);
         socket.on("ai_response", handleAiResponse);
 
         return () => {
-            console.log("Cleaning up socket listeners in App.tsx...");
             socket.off("connect", onConnect);
             socket.off("disconnect", onDisconnect);
             socket.off("connect_error", handleConnectError);
             socket.off("conversation_created", onConversationCreated);
-            socket.off("sequence_updated", handleSequenceUpdate);
+            socket.off("job_updated", handleJobsUpdate);
             socket.off("conversation_messages", handleConversationMessages);
             socket.off("ai_response", handleAiResponse);
         };
     }, [currentUser, selectedConversationId, dispatch]);
 
+    // Handlers for the Conversation Selector
+    const handleConversationSelect = (id: number | null) => {
+        if (selectedConversationId === id) {
+            setIsLoadingMessages(false);
+            return;
+        }
+        dispatch(setSelectedConversation(id));
+        setIsLoadingMessages(id !== null);
+    };
+
+    // Handlers for the New Chat Button
+    const handleNewChat = () => {
+        if (!currentUser) {
+            alert("Please log in to start a new chat.");
+            setIsLoginModalOpen(true);
+            return;
+        }
+        dispatch(setSelectedConversation(null));
+        dispatch(clearMessages());
+        setIsLoadingMessages(false);
+    };
+
+    // Handlers for the login Button in the Modal
+    const handleLoginClick = () => {
+        setIsLoginModalOpen(true);
+    };
+
+    // Handlers for the login Close Button in the Modal
+    const handleCloseModal = () => {
+        setIsLoginModalOpen(false);
+    };
+
+    // Handlers for the login Success
+    const handleLoginSuccess = (user: Users) => {
+        setCurrentUser(user);
+        setIsLoginModalOpen(false);
+        dispatch(setSelectedConversation(null));
+        dispatch(clearMessages());
+    };
+
+    // Handlers for the Logout Button
+    const handleLogoutClick = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                method: "POST",
+                credentials: "include",
+            });
+            if (!response.ok) {
+                console.error("Logout failed on backend, status:", response.status);
+            }
+        } catch (error) {
+            console.error("Error during logout fetch:", error);
+        }
+        setCurrentUser(null);
+        setConversations([]);
+        dispatch(setSelectedConversation(null));
+        dispatch(clearMessages());
+        if (socket.connected) {
+            socket.disconnect();
+        }
+    };
+
+    // Handlers for the Send Message Button
     const handleSendMessage = (content: string) => {
         if (!currentUser) return;
-
         const currentConvoId = selectedConversationId;
-        console.log("handleSendMessage - Current conversation ID (from Redux):", currentConvoId);
+        console.log(
+            "handleSendMessage - Current workspace view (from Redux):",
+            activeWorkspaceView
+        );
 
-        const optimisticUserMessage: Message = {
+        const optimisticUserMessage: Messages = {
             id: `temp-${Date.now()}`,
             sender: "user",
             content: content,
@@ -304,21 +302,15 @@ const App: React.FC = () => {
             conversation_id: currentConvoId === null ? undefined : currentConvoId,
         };
 
-        dispatch(addMessage(optimisticUserMessage));
-        console.log("App: Optimistically added user message via Redux:", optimisticUserMessage);
-
-        console.log(
-            "App: Emitting user message via socket. Target Conversation ID:",
-            currentConvoId
-        );
+        dispatch(addMessages(optimisticUserMessage));
 
         if (socket.connected) {
             socket.emit("send_user_message", {
                 content: content,
                 conversationId: currentConvoId,
+                activeView: activeWorkspaceView,
             });
         } else {
-            console.error("Socket not connected. Cannot send message.");
             alert("Connection error: Could not send message.");
         }
     };
@@ -329,6 +321,7 @@ const App: React.FC = () => {
 
     return (
         <>
+            {/* Main Layout */}
             <MainLayout
                 chatPanel={
                     <Chatbar isLoading={isLoadingMessages} onSendMessage={handleSendMessage} />
@@ -342,6 +335,8 @@ const App: React.FC = () => {
                 onLoginClick={handleLoginClick}
                 onLogoutClick={handleLogoutClick}
             />
+
+            {/* Login Modal */}
             <LoginModal
                 isOpen={isLoginModalOpen}
                 onClose={handleCloseModal}

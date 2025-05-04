@@ -46,7 +46,7 @@ class Jobs(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     jobrole = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
-    sections = db.relationship('JobSections', backref='jobs', lazy=True, cascade="all, delete-orphan", order_by="job_sections.section_number")
+    sections = db.relationship('JobSections', backref='jobs', lazy=True, cascade="all, delete-orphan", order_by="JobSections.section_number")
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):

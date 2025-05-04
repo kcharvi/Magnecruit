@@ -3,32 +3,32 @@
 
 **Magnecruit** is a smart, AI-driven web application designed to streamline and enhance recruitment workflows. It provides a unified workspace where recruiters can leverage the power of large language models (LLMs) through a conversational interface to automate and assist with various hiring tasks.
 
-The core feature demonstrated is the 🧠 **MagnecAI Chat**, which allows users to interact with an AI assistant (powered by Google Gemini) to collaboratively create and refine multi-step candidate outreach sequences.
+The core feature demonstrated is the 🧠 **MagnecAI Chat**, which allows users to interact with an AI assistant (powered by Google Gemini) to collaboratively create and refine multi-step candidate outreach tasks.
 
 ![Magnecruit Preview](Application_Preview.png)
 
 ### 🔑 Key Features:
 
   * **AI Chat Assistant (MagnecAI):** Engage in natural language conversations to generate recruitment content and perform actions.
-  * **Conversational Sequence Generation:** Chat with the AI to define the goal, tone, target audience, and steps for an outreach sequence (e.g., emails, LinkedIn messages).
-  * **Live Sequence Workspace:** As the sequence is developed through chat, it appears and updates in real-time in a dedicated "Sequence Curator" view within the workspace.
-  * **Direct Editing:** Users can manually edit the sequence details (title, description, steps) directly in the workspace view and save for future preferences.
-  * **AI-Powered Editing:** Users can ask the AI assistant via chat to make specific modifications to the existing sequence (e.g., "Make step 2 more casual," "Add a LinkedIn connection request as step 1").
+  * **Conversational Job Description Generation:** Chat with the AI to define the goal, tone, target audience, and steps for an outreach Job Description (e.g., emails, LinkedIn messages).
+  * **Live Job Description Workspace:** As the job sections is developed through chat, it appears and updates in real-time in a dedicated "Job Sections Curator" view within the workspace.
+  * **Direct Editing:** Users can manually edit the job details (title, description, sections) directly in the workspace view and save for future preferences.
+  * **AI-Powered Editing:** Users can ask the AI assistant via chat to make specific modifications to the existing job description (e.g., "Make step 2 more casual," "Add a LinkedIn connection request as step 1").
   * **Persistent Conversations:** Chat history is saved per user, allowing context to be maintained across sessions.
   * **User Authentication:** Secure login and session management for individual user workspaces.
-  * **Modular Workspace:** Designed to host various recruitment tools (Sequence Curator, Job Description Writer, etc.) accessible from a central grid.
+  * **Modular Workspace:** Designed to host various recruitment tools (Job Description Curator, Job Description Writer, etc.) accessible from a central grid.
 
-### ⚙️ How it Works (Sequence Generation Example):
+### ⚙️ How it Works (Job Description Generation Example):
 
-1.  A logged-in user starts a chat with MagnecAI, describing the desired outreach sequence.
+1.  A logged-in user starts a chat with MagnecAI, describing the desired outreach task.
 2.  The React frontend sends the message via **Socket.IO** to the Flask backend.
-3.  The backend `sequence_service` retrieves conversation history and the current sequence state (if any) from the database (**SQLAlchemy/PostgreSQL**).
+3.  The backend `job_sections_service` retrieves conversation history and the current job state (if any) from the database (**SQLAlchemy/PostgreSQL**).
 4.  An appropriate prompt is constructed (**Prompt Engineering**) and sent to the **Google Gemini LLM** via the `llm_interface`.
-5.  The LLM responds, either asking clarifying questions or providing the sequence structure formatted as JSON.
+5.  The LLM responds, either asking clarifying questions or providing the job description structure formatted as JSON.
 6.  The backend **parses** the potential JSON from the LLM response.
-7.  If valid sequence data is found, it's saved or updated in the database.
-8.  The backend emits the raw AI response back to the chat UI and emits a `sequence_updated` event with the new sequence data via Socket.IO.
-9.  The React frontend updates the `ChatBar` with the AI's message and the `SequenceCuratorView` in the `Workspace` with the live sequence data.
+7.  If valid job data is found, it's saved or updated in the database.
+8.  The backend emits the raw AI response back to the chat UI and emits a `job_updated` event with the new job data via Socket.IO.
+9.  The React frontend updates the `ChatBar` with the AI's message and the `JobSectionsCuratorView` in the `Workspace` with the live job data.
 
 ### 🛠️ Tech Stack
 

@@ -12,8 +12,12 @@ from app.models import (
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 
+# Shell context processor for the flask shell
 @app.shell_context_processor
 def make_shell_context():
+    '''
+    Returns the shell context for the flask shell
+    '''
     return dict(db=db,
                 User=Users,
                 Conversation=Conversations,

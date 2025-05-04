@@ -1,13 +1,15 @@
 // magnecruit_frontend\src\store\chatSlice.ts
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Message } from '../lib/types';
+import { Messages } from '../lib/types';
 
+// Interface for the Chat State
 interface ChatState {
-  messages: Message[];
+  messages: Messages[];
   selectedConversationId: number | null;
 }
 
+// Initial State for the Chat
 const initialState: ChatState = {
     messages: [],
     selectedConversationId: null,
@@ -17,28 +19,23 @@ const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    setMessages(state, action: PayloadAction<Message[]>) {
-      console.log("Redux Reducer: Setting Messages", action.payload);
+    setMessages(state, action: PayloadAction<Messages[]>) {
       state.messages = action.payload;
     },
-    addMessage(state, action: PayloadAction<Message>){
-        state.messages.push(action.payload);
-        console.log("Redux Reducer: Added Message", action.payload);
-    },
     clearMessages(state){
-        console.log("Redux Reducer: Clearing Messages");
         state.messages = [];
     },
+    addMessages(state, action: PayloadAction<Messages>){
+      state.messages.push(action.payload);
+    },
     setSelectedConversation(state, action: PayloadAction<number | null>) {
-        console.log("Redux Reducer: Setting Selected Conversation ID", action.payload);
         state.selectedConversationId = action.payload;
         if (state.selectedConversationId !== action.payload) {
-             state.messages = [];
-             console.log("Redux Reducer: Cleared messages due to conversation change.");
+            state.messages = [];
         }
     }
   },
 });
 
-export const { setMessages, addMessage, clearMessages, setSelectedConversation } = chatSlice.actions;
+export const { setMessages, addMessages, clearMessages, setSelectedConversation } = chatSlice.actions;
 export default chatSlice.reducer; 
