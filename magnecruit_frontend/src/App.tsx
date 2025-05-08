@@ -54,8 +54,6 @@ const App: React.FC = () => {
         checkUserSession();
     }, []);
 
-
-
     // Effect to fetch conversations from the backend routing for the current user
     useEffect(() => {
         const fetchConversations = async () => {
@@ -151,6 +149,15 @@ const App: React.FC = () => {
             setIsLoadingMessages(true);
         }
 
+        function handleChatTitleChange(data: { conversation_id: number; new_title: string }) {
+            setConversations((prevConversations) => {
+                const newConversations = prevConversations.map((convo) =>
+                    convo.id === data.conversation_id ? { ...convo, title: data.new_title } : convo
+                );
+                return newConversations;
+            });
+        }
+
         function handleJobsUpdate(data: JobsUpdatePayload) {
             if (data.conversation_id === selectedConversationId) {
                 dispatch(setAiGeneratedJobSections(data));
@@ -211,6 +218,7 @@ const App: React.FC = () => {
         socket.on("job_updated", handleJobsUpdate);
         socket.on("conversation_messages", handleConversationMessages);
         socket.on("ai_response", handleAiResponse);
+        socket.on("chat_title_updated_event", handleChatTitleChange);
 
         return () => {
             socket.off("connect", onConnect);
@@ -220,6 +228,7 @@ const App: React.FC = () => {
             socket.off("job_updated", handleJobsUpdate);
             socket.off("conversation_messages", handleConversationMessages);
             socket.off("ai_response", handleAiResponse);
+            socket.off("chat_title_updated_event", handleChatTitleChange);
         };
     }, [currentUser, selectedConversationId, dispatch]);
 

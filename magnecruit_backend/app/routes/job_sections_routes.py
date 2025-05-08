@@ -1,8 +1,9 @@
 # magnecruit_backend/app/routes/job_sections_routes.py
 
 from datetime import datetime
-from ..models import Jobs, JobSections, db
+from ..models import Jobs, JobSections, db, Conversations
 from flask import Blueprint, request, jsonify
+from .. import socketio
 
 job_sections_bp = Blueprint('job_sections_bp', __name__)
 
@@ -93,6 +94,15 @@ def save_job():
         
         db.session.commit()
         
+        # Update conversation title
+        if conversation_id and job.jobrole:
+            conversation = Conversations.query.get(conversation_id)
+            if conversation:
+                conversation.title = job.jobrole
+                db.session.commit()
+                socketio.emit('chat_title_updated_event', 
+                              {'conversation_id': conversation_id, 'new_title': job.jobrole}, 
+                              room=f'user_{job.user_id}') 
         return jsonify({
             "id": job.id,
             "message": "Job saved successfully"

@@ -20,6 +20,7 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     socketio.init_app(app, async_mode='eventlet', cors_allowed_origins="*")
     
+    # TODO: Remove the localhost:5173 after development
     allowed_origins_str = app.config.get('ALLOWED_ORIGINS', 'http://localhost:5173')
     allowed_origins_list = [origin.strip() for origin in allowed_origins_str.split(',')]
     
@@ -31,7 +32,7 @@ def create_app(config_name='default'):
 
     app.register_blueprint(chat_routes.chat_bp, url_prefix='/api/chat')
     app.register_blueprint(auth_routes.auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(job_sections_routes.job_sections_bp, url_prefix='/api/job-ssections')
+    app.register_blueprint(job_sections_routes.job_sections_bp, url_prefix='/api/job-sections')
     
     return app
 
