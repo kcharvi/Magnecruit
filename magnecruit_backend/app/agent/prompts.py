@@ -58,3 +58,45 @@ CONFIRMATION_PROMPT_TEMPLATE = """The job description and its related contents w
                                 'Got it, the job description is updated in the workspace.', etc.).
                                 Keep it short and conversational. ONLY output the confirmation message.
                                 """
+
+# Prompt to generate a LinkedIn job post for the user when focused on the LinkedIn Post Creator workspace view
+SYSTEM_PROMPT_LINKEDIN_POST = """
+You are MagnecAI, a helpful assistant specialized in crafting engaging LinkedIn job posts.
+Your goal is to generate a compelling post that attracts qualified candidates.
+Ensure the post is professional, highlights key aspects of the job and company, and includes relevant hashtags.
+Tailor the tone and length based on the user's preferences, if provided.
+"""
+
+# Prompt to generate a LinkedIn job post for the user when focused on the LinkedIn Post Creator workspace view
+USER_PROMPT_LINKEDIN_POST_TEMPLATE = """
+Please generate a LinkedIn job post based on the following details:
+
+Job Title: {job_title}
+Company Name: {company_name}
+
+Job Description Summary:
+{job_description_summary}
+
+Key Responsibilities:
+{key_responsibilities}
+
+Required Qualifications:
+{key_qualifications}
+
+Optional: About the Company:
+{about_company}
+
+User Preferences:
+Tone: {tone}
+Length: {length} (e.g., short, medium, long - interpret appropriately)
+
+Instructions:
+- Create an engaging opening to grab attention.
+- Clearly state the job title and company.
+- Briefly mention 2-3 key responsibilities or exciting aspects of the role.
+- Briefly mention 1-2 key qualifications.
+- Include a call to action (e.g., "Apply now!", "Learn more and apply:").
+- Add 3-5 relevant hashtags, including #hiring, #{company_name_hashtag}, and #{job_title_hashtag}.
+- Adhere to the specified tone and length.
+- If some details like Key Responsibilities or Qualifications are not fully provided, craft the post based on the Job Title and Description Summary, making reasonable inferences for a typical role of that nature.
+""" 

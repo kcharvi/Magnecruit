@@ -27,12 +27,13 @@ def create_app(config_name='default'):
     print(f"Configuring CORS for origins: {allowed_origins_list}")
     cors.init_app(app, resources={r"/api/*": {"origins": allowed_origins_list}}, supports_credentials=True)
     
-    from .routes import chat_routes, auth_routes, job_sections_routes
+    from .routes import chat_routes, auth_routes, job_sections_routes, linkedin_post_routes
     from . import websockets 
 
     app.register_blueprint(chat_routes.chat_bp, url_prefix='/api/chat')
     app.register_blueprint(auth_routes.auth_bp, url_prefix='/api/auth')
     app.register_blueprint(job_sections_routes.job_sections_bp, url_prefix='/api/job-sections')
+    app.register_blueprint(linkedin_post_routes.linkedin_post_bp, url_prefix='/api/linkedin-post')
     
     return app
 
